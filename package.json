@@ -1,0 +1,44 @@
+{
+  "name": "http-reverse-proxy",
+  "version": "0.0.1",
+  "license": "UNLICENSED",
+  "description": "A reverse proxy implementation",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test/* --reporter spec",
+    "watch": "tsc --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/BigBangVapeCo/http-reverse-proxy.git"
+  },
+  "keywords": [
+    "proxy",
+    "reverse"
+  ],
+  "author": "Tom Swiedler",
+  "dependencies": {
+    "acme-client": "^3.2.0",
+    "dotenv": "^8.1.0",
+    "express": "^4.17.1",
+    "http-proxy": "^1.18.0",
+    "node-forge": "^0.9.1",
+    "valid-url": "^1.0.9"
+  },
+  "devDependencies": {
+    "@types/acme-client": "^3.0.0",
+    "@types/chai": "^4.2.3",
+    "@types/dotenv": "^6.1.1",
+    "@types/http-proxy": "^1.17.0",
+    "@types/mocha": "^5.2.7",
+    "@types/node": "^12.7.12",
+    "@types/node-forge": "^0.8.6",
+    "chai": "^4.2.0",
+    "mocha": "^2.5.3",
+    "prettier": "^1.18.2",
+    "ts-node": "^8.4.1",
+    "tslint": "^5.20.0",
+    "tslint-config-prettier": "^1.18.0",
+    "tslint-plugin-prettier": "^2.0.1"
+  }
+}
