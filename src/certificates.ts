@@ -75,13 +75,16 @@ export default class Certificates {
     const details: tls.SecureContextOptions = {
       key: key,
       cert: certificate,
-      ca: ca
     };
 
+    if (ca)
+      details.ca = ca
+
+    const context = tls.createSecureContext(details).context
     if (loadCertificateData) {
       const cert = forge.pki.certificateFromPem(Array.isArray(certificate) ? certificate[0] : certificate)
       this.certificates[hostName] = {
-        secureContext: tls.createSecureContext(details),
+        secureContext: context,
         certificateInformation: {
           expiresOn: cert.validity.notAfter,
           commonName: cert.subject.attributes.reduce((current, attribute) => attribute.name === 'commonName' ? attribute.value : current, null)
@@ -89,7 +92,7 @@ export default class Certificates {
       }
     }
     else {
-      this.certificates[hostName] = { secureContext: tls.createSecureContext(details) }
+      this.certificates[hostName] = { secureContext: context }
     }
     return true
   }

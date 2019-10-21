@@ -23,6 +23,20 @@
     {
       "type": "node",
       "request": "launch",
+      "name":"Run Test",
+      "env":
+        {
+          "NODE_ENV":"development"
+        },
+      "program": "${workspaceFolder}/src/test/runInternalTests.ts",
+      "outFiles": [
+        "${workspaceFolder}/dist/test/*.js"
+      ],
+      "cwd": "${workspaceFolder}/dist"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name":"Run Server",
       "env":
         {

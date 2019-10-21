@@ -12,6 +12,7 @@ import Certificates from './certificates'
 import LetsEncrypt from './letsEnryptUsingAcmeClient'
 import HTTPRouter, { ExtendedIncomingMessage, ProxyTargetUrl } from './httpRouter'
 import SimpleLogger, { LoggerInterface } from './simpleLogger'
+import { SSL_OP_NO_SSLv3 } from 'constants'
 
 interface ExtendedProxyOptions extends httpProxy.ServerOptions {
   ntlm?: boolean
@@ -20,7 +21,8 @@ interface ExtendedProxyOptions extends httpProxy.ServerOptions {
 interface HttpsServerOptions {
   // secure: boolean;
   port: number
-  certificateStoreRoot: string
+  // certificateStoreRoot: string
+  certificates: Certificates
   interface?: string
   keyFilename?: string
   certificateFilename?: string
@@ -139,7 +141,7 @@ export default class HTTPReverseProxy {
     this.proxy = this.createProxyServer(options.proxy || defaultProxyOptions)
     this.server = this.setupHttpServer(this.proxy, options)
     if (options.https) {
-      this.certificates = new Certificates(options.https.certificateStoreRoot)
+      this.certificates = options.https.certificates
       options.https.interface = options.https.interface || options.interface
       this.httpsServer = this.setupHttpsServer(this.proxy, options.https)
     }
@@ -189,7 +191,10 @@ export default class HTTPReverseProxy {
         if (this.shouldRedirectToHttps(source, target)) {
           this.redirectToHttps(req, res, options.https);
         } else {
-          proxy.web(req, res, { target: target, secure: options.proxy.secure !== false });
+          //TO DO handle errors
+          proxy.web(req, res, { target: target, secure: options.proxy.secure !== false }, (error, req, res) => {
+            this.respondNotFound(req, res)
+          });
         }
       } else {
         this.respondNotFound(req, res);
@@ -203,17 +208,22 @@ export default class HTTPReverseProxy {
     // server.on('upgrade', websocketsUpgrade);
 
     server.on('error', function (err) {
-      this.log.error(err, 'Server Error');
+      this.log && this.log.error(err, 'Server Error');
     });
 
+    server.on('listening',  () =>{
+      const serverAddress = server.address()
+        this.log && this.log.info(serverAddress, 
+          `HTTP server listening`);
+    })
+
     server.listen(options.port, options.interface)
-    this.log && this.log.info(null, `Listening to HTTP requests on port ${options.port}`);
 
     return server;
   }
 
   shouldRedirectToHttps = (src: string, target: ProxyTargetUrl) => {
-    return this.certificates && src in this.certificates && target.sslRedirect && target.host != this.letsEncryptHost;
+    return this.certificates && this.certificates.getCertificate(src) && target.sslRedirect && target.host != this.letsEncryptHost;
   }
 
   redirectToHttps = (req: ExtendedIncomingMessage, res: http.ServerResponse, httpsOptions: HttpsServerOptions) => {
@@ -249,16 +259,16 @@ export default class HTTPReverseProxy {
     const httpsServerOptions: https.ServerOptions = {
       SNICallback: (hostname: string, cb: (error: Error, ctx: SecureContext) => void) => {
         if (cb) {
-          cb(null, this.certificates[hostname])
+          cb(null, this.certificates.getCertificate(hostname))
         }
         else {
-          return this.certificates[hostname]
+          return this.certificates.getCertificate(hostname)
         }
       },
       key: this.certificates.getCertificateData(httpsOptions.keyFilename, false),
       cert: this.certificates.getCertificateData(httpsOptions.certificateFilename, false),
-      ca: this.certificates.getCertificateData(httpsOptions.caFilename, true),
-      secureOptions: httpsOptions.tlsSecureOptions
+      // ca: this.certificates.getCertificateData(httpsOptions.caFilename, true),
+      // secureOptions: httpsOptions.tlsSecureOptions// || SSL_OP_NO_SSLv3
     }
 
     if (httpsOptions.httpsServerOptions)
@@ -272,7 +282,10 @@ export default class HTTPReverseProxy {
         const target = this.httpRouter.getTarget(source, req as ExtendedIncomingMessage)
         if (target) {
           httpProxyOptions.target = target
-          proxy.web(req, res, httpProxyOptions)
+          //TO DO handle errors
+          proxy.web(req, res, httpProxyOptions, (error, req, res) => {
+            this.respondNotFound(req, res)
+          })
         }
         else {
           this.respondNotFound(req, res)
@@ -294,7 +307,12 @@ export default class HTTPReverseProxy {
       this.log && this.log.error(err, 'HTTPS Client Error');
     });
 
-    this.log && this.log.info(null, `Listening to HTTPS requests on port ${httpsOptions.port}`);
+    httpsServer.on('listening',  () =>{
+      const serverAddress = httpsServer.address()
+        this.log && this.log.info(serverAddress, 
+          `HTTPS server listening`);
+    })
+
     httpsServer.listen(httpsOptions.port, httpsOptions.interface);
 
     return httpsServer;

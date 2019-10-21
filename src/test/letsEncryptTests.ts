@@ -16,33 +16,39 @@ export class LetsEncryptTests extends LetsEncrypt {
     this.email = email
   }
 
+  oneMonth = 30 * 24 * 60 * 60 * 1000
+
   public runLetsEncryptCheckServerTest = () => {
     describe('LetsEncrypt server should respond with error', () => {
+
       const promise = new Promise((resolve, reject) => {
         http.get('http://localhost:80', (res: http.IncomingMessage) => {
           resolve(res.statusCode)
         })
       })
-      it('should resolve to 404', (done) => {
+
+      it('should return status code 404', (done) => {
         expect(promise).to.eventually.be.equal(404)
         done()
       })
     })
   }
 
-  public runLetsEncryptGetCertificateTest = () => {
+  public runLetsEncryptGetCertificateTest = (forceRenew: boolean = false) => {
     describe('LetsEncrypt get certificate test', () => {
       it('should get a vaild certificate', (done) => {
-        this.getNewCertificate(this.domain, false, this.email).then(
-          function (result) {
+        this.getLetsEncryptCertificate(this.domain, false, this.email, this.oneMonth, forceRenew).then(
+          (result) => {
             expect(result).to.be.true
             done();
           },
-          function (err) {
+          (err) => {
             done(err);
           }
         )
       })
+    }).afterAll(() => {
+      this.close()
     })
   }
 }

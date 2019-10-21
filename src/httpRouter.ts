@@ -1,11 +1,11 @@
 import http from 'http'
-import url, { parse as urlParse } from 'url'
+import URL, { parse as urlParse } from 'url'
 import path from 'path'
 import Certificates from './certificates';
 import LetsEncryptUsingAcmeClient from './letsEnryptUsingAcmeClient';
 import {LoggerInterface} from './simpleLogger'
 
-export interface ProxyTargetUrl extends url.Url {
+export interface ProxyTargetUrl extends URL.Url {
   useTargetHostHeader?: boolean
   sslRedirect?: boolean
 }
@@ -24,13 +24,13 @@ interface Routes {
 //   [host: string]: SecureContext
 // }
 
-interface RegistrationLetsEncryptOptions {
+export interface RegistrationLetsEncryptOptions {
   email: string
   production: boolean,
   renewWithin?:number
 }
 
-interface RegistrationHttpsOptions {
+export interface RegistrationHttpsOptions {
   redirect: boolean
   keyPath?: string
   certificatePath?: string
@@ -100,7 +100,7 @@ export default class HTTPRouter {
         if (!this.certificates.getCertificate(from.hostname)) {
           if ('object' === typeof ssl) {
             if (ssl.keyPath || ssl.certificatePath || ssl.caPath) {
-              this.certificates.loadCertificateFromFiles(ssl.keyPath, ssl.certificatePath, ssl.caPath);
+              this.certificates.loadCertificateFromFiles(from.hostname, ssl.keyPath, ssl.certificatePath, ssl.caPath, true);
             }
             else if (ssl.letsEncrypt) {
               if (!this.letsEncrypt) {
@@ -244,7 +244,7 @@ export default class HTTPRouter {
       req.host = target.host;
     }
 
-    this.log && this.log.info(null, `Proxying ${source + url} to ${path.join(target.host, req.url)}`);
+    this.log && this.log.info(null, `Proxying ${source + url} to ${path.join(target.host, req.url).replace(/\\/g, '/')}`);
 
     return target;
   }
@@ -259,7 +259,7 @@ export default class HTTPRouter {
     const routes = this.routing[host.toLowerCase()];
 
     if (routes) {
-      if (this.letsEncrypt && /^\/.well-known\/acme-challenge/.test(url)) {
+      if (this.letsEncrypt && /^\/.well-known\/acme-challenge\//.test(url)) {
         return {
           path: '/',
           roundRobin: 0,

@@ -14,7 +14,9 @@ const log = (data: {} | null, message: string) => {
   if (data) {
     console.log(`${JSON.stringify(data)}: ${message}`)
   }
-  console.log(message)
+  else {
+    console.log(message)
+  }
 }
 
 const simpleLogger: LoggerInterface = {

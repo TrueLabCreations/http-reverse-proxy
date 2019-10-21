@@ -1,106 +1,97 @@
-import http from 'http'
 import { HTTPReverseProxyTest } from './httpReverseProxyTest'
-import { HTTPReverseProxyOptions } from '../httpReverseProxy'
+import HTTPReverseProxy, { HTTPReverseProxyOptions } from '../httpReverseProxy'
 import { CertificateTests } from './certificateTests'
 import { LetsEncryptTests } from './letsEncryptTests'
+import { RouterTests } from './routerTests'
 import { LetsEncryptServerOptions } from '../letsEnryptUsingAcmeClient'
 import Certificates from '../certificates'
 import SimpleLogger from '../simpleLogger'
-
-// import forge from 'node-forge'
-// import fs from 'fs'
-// const pki = forge.pki;
-
-// const pem = fs.readFileSync('C:\\dev\\http-reverse-proxy\\certificates\\testing_swiedler_com_crt.pem', 'utf8').toString()
-
-// const cert = pki.certificateFromPem(pem);
-
-// console.log (JSON.stringify(cert))
-
-// process.exit(0)
+import { HTTPRouterOptions, RegistrationHttpsOptions } from '../httpRouter'
+import simpleLogger from '../simpleLogger'
 
 const httpTestOptions: HTTPReverseProxyOptions = {
   port: 8080,
-  // maintainCertificates: false,
   proxy: {
     xfwd: false,
-    secure: true,
+    secure: false,
+    ntlm: false,
+    prependPath: false,
+  },
+  preferForwardedHost: false,
+  log: null,
+}
+
+const httpsTestOptions: HTTPReverseProxyOptions = {
+  port: 8080,
+  proxy: {
+    xfwd: false,
+    secure: false,
     ntlm: false,
     prependPath: false,
   },
   https: {
     port: 8443,
-    keyFilename: 'C:\\dev\\http-reverse-proxy\\certificates\\testing_swiedler_com_key.pem',
-    certificateFilename: 'C:\\dev\\http-reverse-proxy\\certificates\\testing_swiedler_com_crt.pem',
-    certificateStoreRoot: 'C:\\dev\\http-reverse-proxy\\certificates',
-    // secure: false
+    certificates: new Certificates('..\\certificates'),
   },
   preferForwardedHost: false,
-  // log: null,
-  // serverModule: null,
-}
-const letsEncryptServerTestOptions: HTTPReverseProxyOptions = {
-  port: 8080,
-  // maintainCertificates: false,
-  preferForwardedHost: false,
-  letsEncrypt: {
-    port: 3000,
-    challengePath: 'C:\\dev\\http-reverse-proxy\\challenges'
-  },
-  // log: null,
-  // serverModule: null,
+  log: null,
 }
 
-const letsEncryptCertificateTestOptions: HTTPReverseProxyOptions = {
-  port: 80,
-  // maintainCertificates: false,
-  preferForwardedHost: false,
-  letsEncrypt: {
-    port: 3000,
-    challengePath: 'C:\\dev\\http-reverse-proxy\\challenges'
+const httpsRouterOptions: RegistrationHttpsOptions[] = [
+  {
+    redirect: true,
+    keyPath: 'C:\\dev\\http-reverse-proxy\\testCertificates\\server1-key.pem',
+    certificatePath: 'C:\\dev\\http-reverse-proxy\\testCertificates\\server1-crt.pem'
   },
-  https: {
-    port: 443,
-    certificateStoreRoot: 'C:\\dev\\http-reverse-proxy\\certificates',
-    // secure: false
+  {
+    redirect: true,
+    keyPath: 'C:\\dev\\http-reverse-proxy\\testCertificates\\server2-key.pem',
+    certificatePath: 'C:\\dev\\http-reverse-proxy\\testCertificates\\server2-crt.pem'
   },
-  // log: null,
-  // serverModule: null,
-}
+  {
+    redirect: true,
+    keyPath: 'C:\\dev\\http-reverse-proxy\\testCertificates\\server3-key.pem',
+    certificatePath: 'C:\\dev\\http-reverse-proxy\\testCertificates\\server3-crt.pem'
+  },
+]
 
 const letsEncryptServerOptions: LetsEncryptServerOptions = {
-  serverInterface: 'localhost',
   serverPort: 80,
   certificates: new Certificates('..\\certificates'),
-  // challengePath: '..\\challenges',
   log: SimpleLogger
 }
 
-const runTests = async () => {
+const httpRouterOptions: HTTPRouterOptions = {
+  preferForwardedHost: false,
+  routingHttps: false
+}
+
+const runTests = () => {
   try {
-    // let certificateTests:CertificateTests
-    // certificateTests = new CertificateTests('../certificates')
-    // certificateTests.TestAddingHosts()
+    let certificateTests: CertificateTests
+    certificateTests = new CertificateTests('..\\certificates')
+    certificateTests.TestAddingHosts()
 
     let letsEncryptTests: LetsEncryptTests
-    letsEncryptTests = new LetsEncryptTests(letsEncryptServerOptions, 'swiedler.hopto.org', "tom@swiedler.com")
+    letsEncryptTests = new LetsEncryptTests(letsEncryptServerOptions, 'testing.swiedler.com', "tom@swiedler.com")
     letsEncryptTests.runLetsEncryptCheckServerTest()
     letsEncryptTests.runLetsEncryptGetCertificateTest()
-    // letsEncryptTests.close()
 
-    // let test:HTTPReverseProxyTest
-    // test = new HTTPReverseProxyTest(httpTestOptions)
-    // await test.runRegistrationTests(httpTestOptions)
+    let routerTests: RouterTests
+    routerTests = new RouterTests(new Certificates('..\\certificates'), httpRouterOptions, null, null)
+    routerTests.runRegistrationTests()
 
-    // test = new HTTPReverseProxyTest(letsEncryptServerTestOptions)
-    // await test.runLetsEncryptServerTests(letsEncryptServerTestOptions.letsEncrypt.port)
+    let httpTest: HTTPReverseProxyTest
+    httpTest = new HTTPReverseProxyTest(httpTestOptions)
+    httpTest.runHttpProxyTests()
 
-    // test = new HTTPReverseProxyTest(letsEncryptCertificateTestOptions)
-    // await test.runLetsEncryptCertificateTests()
+    let httpsTest: HTTPReverseProxyTest
+    httpsTest = new HTTPReverseProxyTest(httpsTestOptions)
+    httpsTest.runHttpsProxyTests(httpsRouterOptions)
+
   } catch (e) {
 
   }
 }
-// test.runHTTPSTests()
 
 runTests()

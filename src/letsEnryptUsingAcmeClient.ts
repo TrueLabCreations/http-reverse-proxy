@@ -1,10 +1,11 @@
 import http from 'http'
-import fs from 'fs'
+// import fs from 'fs'
 import acmeClient from 'acme-client'
 import Certificates, { CertificateInformation } from './certificates'
 import { CsrOptions } from 'acme-client/crypto/forge'
-import { parse as urlParse } from 'url'
-import path from 'path'
+import { AddressInfo } from 'net'
+// import { parse as urlParse } from 'url'
+// import path from 'path'
 
 export interface LetsEncryptServerOptions {
   serverInterface?: string
@@ -42,7 +43,7 @@ export default class LetsEncryptUsingAcmeClient {
     this.log = options.log
     this.certificates = options.certificates
     // this.challengePath = options.challengePath
-    this.serverInterface = options.serverInterface || 'localhost'
+    this.serverInterface = options.serverInterface // || 'localhost'
     this.serverPort = options.serverPort || 3000
     this.httpServer = this.setupLetsEncryptServer()
   }
@@ -50,7 +51,7 @@ export default class LetsEncryptUsingAcmeClient {
   private setupLetsEncryptServer = (): http.Server => {
     const server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
       this.log && this.log.info(null, `LetsEncypt url: ${req.url}`)
-      const token = req.url.trim().split('/').pop().replace(/\W-/g,'')
+      const token = req.url.trim().replace(/$\//, '').split('/').pop().replace(/\W-/g,'')
       // const pathname = urlParse(req.url).pathname
       // const filename = path.join(this.challengePath, pathname)
       // if (pathname.length < 3 || filename.indexOf(this.challengePath) !== 0) {
@@ -61,9 +62,9 @@ export default class LetsEncryptUsingAcmeClient {
       // }
       this.log && this.log.info(null, `LetsEncrypt validating challenge ${token}`)
 
-      if (!LetsEncryptUsingAcmeClient.outstandingChallenges[token]){
+      if (!token || !LetsEncryptUsingAcmeClient.outstandingChallenges[token]){
         res.writeHead(404, { "Content-Type": "text/plain" })
-        res.write("404 Not Found\n")
+        res.write("404 Token Not Found\n")
         res.end()
         return
       }
@@ -82,24 +83,38 @@ export default class LetsEncryptUsingAcmeClient {
         res.end()
         // fs.createReadStream(filename, "binary").pipe(res);
     })
-    server.listen(this.serverPort)
-    this.log && this.log.info(null, `LetsEncrypt server listening to HTTP requests on ${this.serverInterface}:${this.serverPort}`);
+    server.listen(this.serverPort, this.serverInterface)
+    
+    server.on('listening',  () =>{
+      const serverAddress = server.address()
+      // if (serverAddress){
+        this.log && this.log.info(serverAddress, 
+          `LetsEncrypt server listening to HTTP requests`);
+      // }
+      // else{
+      //   this.log && this.log.info({address:this.serverInterface, port:this.serverPort}, 
+      //     `LetsEncrypt server listening to HTTP requests (null address)`);
+      //  }
+    })
     return server;
   }
 
   public getLetsEncryptCertificate = async (domain: string, production: boolean, email: string,
-    renewWithin: number, forceRenew?: boolean) => {
+    renewWithin: number, forceRenew?: boolean): Promise<boolean> => {
 
     if (!forceRenew && this.certificates.loadCertificateFromStore(domain, true)) {
       const certificateData: CertificateInformation = this.certificates.getCertificateInformation(domain)
       if (certificateData && certificateData.expiresOn &&
-        certificateData.expiresOn.valueOf() > new Date().valueOf() + renewWithin)
-        return
+        certificateData.expiresOn.valueOf() > new Date().valueOf() + renewWithin){
+          // this.log && this.log.info(null, certificateData.expiresOn.toString())
+          // this.log && this.log.info(null, new Date().toString())
+        return true
+        }
     }
-    await this.getNewCertificate(domain, production, email)
+    return await this.getNewCertificate(domain, production, email)
   };
 
-  protected getNewCertificate = async (domain: string, production: boolean, email: string): Promise<boolean> => {
+  protected getNewCertificate = async (host: string, production: boolean, email: string): Promise<boolean> => {
     let returnResult = true
     const clientOptions: acmeClient.Options = {
       directoryUrl: production ? acmeClient.directory.letsencrypt.production : acmeClient.directory.letsencrypt.staging,
@@ -107,7 +122,7 @@ export default class LetsEncryptUsingAcmeClient {
     }
 
     const orderRequest: acmeClient.CreateOrderRequest = {
-      identifiers: [{ type: 'dns', value: domain }]
+      identifiers: [{ type: 'dns', value: host }]
     }
 
     const client: acmeClient.Client = new acmeClient.Client(clientOptions)
@@ -165,15 +180,15 @@ export default class LetsEncryptUsingAcmeClient {
       return returnResult
 
     const csrOptions: CsrOptions = {
-      commonName: domain
+      commonName: host
     }
 
     const [key, csr] = await acmeClient.forge.createCsr(csrOptions)
     await client.finalizeOrder(order, csr);
     const certificate: string = await client.getCertificate(order);
 
-    this.certificates.saveCertificateToStore(domain, key.toString(), certificate)
-    this.certificates.loadCertificateFromStore(domain, true)
+    this.certificates.saveCertificateToStore(host, key.toString(), certificate)
+    this.certificates.loadCertificateFromStore(host, true)
 
     return true
   }
@@ -182,35 +197,35 @@ export default class LetsEncryptUsingAcmeClient {
     this.httpServer && this.httpServer.close()
   }
 
-  private exists = async (path: string): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-      fs.exists(path, (exists: boolean) => {
-        resolve(exists)
-      })
-    })
+  // private exists = async (path: string): Promise<boolean> => {
+  //   return new Promise((resolve, reject) => {
+  //     fs.exists(path, (exists: boolean) => {
+  //       resolve(exists)
+  //     })
+  //   })
 
-  }
-  private writeFile = async (path: string, data: any, opts = 'utf8'): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-      fs.writeFile(path, data, opts, (err) => {
-        resolve(!err)
-      })
-    })
-  }
+  // }
+  // private writeFile = async (path: string, data: any, opts = 'utf8'): Promise<boolean> => {
+  //   return new Promise((resolve, reject) => {
+  //     fs.writeFile(path, data, opts, (err) => {
+  //       resolve(!err)
+  //     })
+  //   })
+  // }
 
-  private mkDir = async (path: string, opts = { recursive: true }) => {
-    return new Promise((resolve, reject) => {
-      fs.mkdir(path, opts, (err) => {
-        resolve(!err)
-      })
-    })
-  }
+  // private mkDir = async (path: string, opts = { recursive: true }) => {
+  //   return new Promise((resolve, reject) => {
+  //     fs.mkdir(path, opts, (err) => {
+  //       resolve(!err)
+  //     })
+  //   })
+  // }
 
-  private unlink = async (path: string) => {
-    return new Promise((resolve, reject) => {
-      fs.unlink(path, (err) => {
-        resolve(!err)
-      })
-    })
-  }
+  // private unlink = async (path: string) => {
+  //   return new Promise((resolve, reject) => {
+  //     fs.unlink(path, (err) => {
+  //       resolve(!err)
+  //     })
+  //   })
+  // }
 }

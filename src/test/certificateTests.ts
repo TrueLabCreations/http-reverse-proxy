@@ -158,7 +158,7 @@ KjcBsrilsxwsGqzrovvVbucVOtEZnx2t7ipI9EfSvuU=
         expect(additionalInfo).to.be.an('object')
         expect(additionalInfo).to.have.property('expiresOn')
         expect(additionalInfo.expiresOn).to.be.a('Date')
-        expect(additionalInfo.expiresOn.toLocaleDateString()).to.be.equal('11/16/2019')
+        expect(additionalInfo.expiresOn.toLocaleDateString()).to.be.equal('1/19/2020')
         expect(additionalInfo.commonName).to.be.equal('testing.swiedler.com')
       })
 
