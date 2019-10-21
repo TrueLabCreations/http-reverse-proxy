@@ -83,19 +83,15 @@ export default class LetsEncryptUsingAcmeClient {
         res.end()
         // fs.createReadStream(filename, "binary").pipe(res);
     })
-    server.listen(this.serverPort, this.serverInterface)
     
     server.on('listening',  () =>{
       const serverAddress = server.address()
-      // if (serverAddress){
         this.log && this.log.info(serverAddress, 
           `LetsEncrypt server listening to HTTP requests`);
-      // }
-      // else{
-      //   this.log && this.log.info({address:this.serverInterface, port:this.serverPort}, 
-      //     `LetsEncrypt server listening to HTTP requests (null address)`);
-      //  }
     })
+
+    server.listen(this.serverPort, this.serverInterface)
+
     return server;
   }
 
