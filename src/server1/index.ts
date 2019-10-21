@@ -7,6 +7,6 @@ const server = http.createServer((req, res) => {
   res.write('<html><head></head><body><h1>Hello from server 1</h1></body></html>')
   res.end()
 })
-  .listen(8001, () => {
-    console.log('Server1 started on port 8001')
+  .listen(80, () => {
+    console.log('Server1 started on port 80')
   }) 

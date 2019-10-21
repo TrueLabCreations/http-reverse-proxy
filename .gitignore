@@ -63,3 +63,6 @@ typings/
 
 # execution directory
 dist
+
+certificates
+challenges
