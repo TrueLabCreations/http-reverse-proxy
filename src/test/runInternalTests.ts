@@ -58,7 +58,8 @@ const httpsRouterOptions: RegistrationHttpsOptions[] = [
 const letsEncryptServerOptions: LetsEncryptServerOptions = {
   serverPort: 80,
   certificates: new Certificates('..\\certificates'),
-  log: SimpleLogger
+  log: SimpleLogger,
+  noVerify:true,
 }
 
 const httpRouterOptions: HTTPRouterOptions = {
@@ -75,7 +76,7 @@ const runTests = () => {
     let letsEncryptTests: LetsEncryptTests
     letsEncryptTests = new LetsEncryptTests(letsEncryptServerOptions, 'testing.swiedler.com', "tom@swiedler.com")
     letsEncryptTests.runLetsEncryptCheckServerTest()
-    letsEncryptTests.runLetsEncryptGetCertificateTest()
+    letsEncryptTests.runLetsEncryptGetCertificateTest(true)
 
     let routerTests: RouterTests
     routerTests = new RouterTests(new Certificates('..\\certificates'), httpRouterOptions, null, null)

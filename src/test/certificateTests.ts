@@ -156,9 +156,8 @@ KjcBsrilsxwsGqzrovvVbucVOtEZnx2t7ipI9EfSvuU=
       it('should get the addtional data', () => {
         const additionalInfo = this.getCertificateInformation('testing.swiedler.com')
         expect(additionalInfo).to.be.an('object')
-        expect(additionalInfo).to.have.property('expiresOn')
-        expect(additionalInfo.expiresOn).to.be.a('Date')
-        expect(additionalInfo.expiresOn.toLocaleDateString()).to.be.equal('1/19/2020')
+        expect(additionalInfo).to.have.property('commonName')
+        expect(additionalInfo.commonName).to.be.a('string')
         expect(additionalInfo.commonName).to.be.equal('testing.swiedler.com')
       })
 

@@ -37,15 +37,16 @@ export class LetsEncryptTests extends LetsEncrypt {
   public runLetsEncryptGetCertificateTest = (forceRenew: boolean = false) => {
     describe('LetsEncrypt get certificate test', () => {
       it('should get a vaild certificate', (done) => {
-        this.getLetsEncryptCertificate(this.domain, false, this.email, this.oneMonth, forceRenew).then(
-          (result) => {
-            expect(result).to.be.true
-            done();
-          },
-          (err) => {
-            done(err);
-          }
-        )
+        expect (
+        this.getLetsEncryptCertificate(this.domain, false, this.email, this.oneMonth, forceRenew)
+        ).to.eventually.be.true.notify(done)
+        //   (result) => {
+        //     expect(result).to.be.true.notify(done)
+        //   },
+        //   (err) => {
+        //     done(err);
+        //   }
+        // )
       })
     }).afterAll(() => {
       this.close()
