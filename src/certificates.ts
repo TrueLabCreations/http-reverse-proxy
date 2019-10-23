@@ -1,5 +1,6 @@
 import tls from "tls";
 import fs from "fs";
+import path from 'path'
 import forge from 'node-forge'
 
 export interface CertificateInformation {
@@ -81,6 +82,7 @@ export default class Certificates {
       details.ca = ca
 
     const context = tls.createSecureContext(details).context
+
     if (loadCertificateData) {
       const cert = forge.pki.certificateFromPem(Array.isArray(certificate) ? certificate[0] : certificate)
       this.certificates[hostName] = {
@@ -114,11 +116,11 @@ export default class Certificates {
   public loadCertificateFromStore = (hostName: string, loadCertificateData?: boolean): boolean => {
 
     const pathName = hostName.replace(/\./g, '_')
-    const storePath = `${this.certificateStoreRoot}/${pathName}`
+    const storePath = path.join(`${this.certificateStoreRoot}`,`${pathName}`)
 
-    const key = this.getCertificateData(`${storePath}/${pathName}-key.pem`, false)
-    const certificate = this.getCertificateData(`${storePath}/${pathName}-crt.pem`, false)
-    const ca = this.getCertificateData(`${storePath}/${pathName}-ca.pem`, true)
+    const key = this.getCertificateData(path.join(`${storePath}`,`${pathName}-key.pem`), false)
+    const certificate = this.getCertificateData(path.join(`${storePath}`,`${pathName}-crt.pem`), false)
+    const ca = this.getCertificateData(path.join(`${storePath}`,`${pathName}-ca.pem`), true)
 
     return this.loadCertificate(hostName, key, certificate, ca, loadCertificateData)
   }
@@ -127,12 +129,12 @@ export default class Certificates {
     // this.log && this.log.info(null, `Saving key and certificate at path: ${certificateStoreRoot}`);
     const pathName = hostName.replace(/\./g, '_')
 
-    const storePath = `${this.certificateStoreRoot}/${pathName}`
+    const storePath = path.join(`${this.certificateStoreRoot}`,`${pathName}`)
 
     return this.mkDir(storePath, { recursive: true }) &&
-      this.writeFile(`${storePath}/${pathName}-key.pem`, key) &&
-      this.writeFile(`${storePath}/${pathName}-crt.pem`, certificate) &&
-      (!ca || this.writeFile(`${storePath}/${pathName}-ca.pem`, ca))
+      this.writeFile(path.join(`${storePath}`,`${pathName}-key.pem`), key) &&
+      this.writeFile(path.join(`${storePath}`,`${pathName}-crt.pem`), certificate) &&
+      (!ca || this.writeFile(path.join(`${storePath}`,`${pathName}-ca.pem`), ca))
   }
 
   public getCertificateData = (pathName: string | string[], unbundle: boolean): string | string[] => {

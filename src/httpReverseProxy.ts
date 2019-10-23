@@ -9,10 +9,10 @@ import acmeClient from 'acme-client'
 import { CsrOptions } from 'acme-client/crypto/forge';
 import { AddressInfo } from 'net'
 import Certificates from './certificates'
-import LetsEncrypt from './letsEnryptUsingAcmeClient'
+import LetsEncryptUsingAcmeClient from './letsEnryptUsingAcmeClient'
 import HTTPRouter, { ExtendedIncomingMessage, ProxyTargetUrl } from './httpRouter'
-import SimpleLogger, { LoggerInterface } from './simpleLogger'
-import { SSL_OP_NO_SSLv3 } from 'constants'
+import { LoggerInterface } from './simpleLogger'
+import AbstractLetsEncryptClient from './letsEncrypt'
 
 interface ExtendedProxyOptions extends httpProxy.ServerOptions {
   ntlm?: boolean
@@ -22,7 +22,7 @@ interface HttpsServerOptions {
   // secure: boolean;
   port: number
   // certificateStoreRoot: string
-  certificates: Certificates
+  certificates: Certificates | string
   interface?: string
   keyFilename?: string
   certificateFilename?: string
@@ -35,63 +35,20 @@ interface HttpsServerOptions {
   httpsServerOptions?: https.ServerOptions
 }
 
-// interface ProxyTargetUrl extends url.Url {
-//   useTargetHostHeader?: boolean
-//   sslRedirect?: boolean
-// }
-
-// interface Route {
-//   path: string
-//   roundRobin: number
-//   targets: ProxyTargetUrl[]
-// }
-
-// interface Routes {
-//   [host: string]: Route[]
-// }
-
-// // interface Certificates {
-// //   [host: string]: SecureContext
-// // }
-
-// interface RegistrationLetsEncryptOptions {
-//   email: string
-//   production: boolean
-// }
-
-// interface RegistrationHttpsOptions {
-//   redirect: boolean
-//   keyPath?: string
-//   certificatePath?: string
-//   caPath?: string
-//   secureOptions?: number
-//   letsEncrypt?: RegistrationLetsEncryptOptions
-// }
-
-// interface RegistrationOptions {
-//   https?: RegistrationHttpsOptions | boolean,
-//   useTargetHostHeader?: boolean
-// }
-
-// interface ExtendedIncomingMessage extends http.IncomingMessage {
-//   host: string;
-//   originalUrl: string
-// }
-
 interface LetsEncryptOptions {
   port?: number
   renewWithin?: number
-  challengePath: string
+  // challengePath: string
   // maintainCertificates: boolean
 }
 
 export interface HTTPReverseProxyOptions {
-  port: number
+  port?: number
   interface?: string
   proxy?: ExtendedProxyOptions
   https?: HttpsServerOptions
   letsEncrypt?: LetsEncryptOptions
-  preferForwardedHost: boolean,
+  preferForwardedHost?: boolean,
   log?: LoggerInterface
   // serverModule: typeof http | typeof https
 }
@@ -107,13 +64,16 @@ const defaultProxyOptions: ExtendedProxyOptions = {
   secure: true,
 }
 
-const defaultOptions: HTTPReverseProxyOptions = {
-  port: 8080,
-  // maintainCertificates: false,
+const defaultHttpOptions: HTTPReverseProxyOptions = {
+  port: 80,
   proxy: defaultProxyOptions,
   https: null,
   preferForwardedHost: false,
-  // serverModule: null
+}
+
+const defaultHttpsOptions: HttpsServerOptions = {
+  port: 443,
+  certificates: '../certificates'
 }
 
 // const ONE_DAY = 60 * 60 * 24 * 1000;
@@ -124,39 +84,54 @@ export default class HTTPReverseProxy {
   protected options: HTTPReverseProxyOptions;
   protected proxy: httpProxy;
   protected server: http.Server
+  protected httpsOptions: HttpsServerOptions
   protected httpsServer: https.Server
   // protected routing: Routes = {};
   protected certificates: Certificates
-  protected letsEncrypt: LetsEncrypt
+  protected letsEncrypt: AbstractLetsEncryptClient
   protected letsEncryptHost: string
   protected httpRouter: HTTPRouter
   protected log: LoggerInterface
 
   constructor(options?: HTTPReverseProxyOptions) {
-    this.options = options = Object.assign({}, options || defaultOptions)
+    this.options = options = { ...defaultHttpOptions, ...options }
     if ('undefined' !== typeof options.log)
       this.log = options.log
     if ('undefined' === typeof options.proxy)
       options.proxy = defaultProxyOptions
     this.proxy = this.createProxyServer(options.proxy || defaultProxyOptions)
     this.server = this.setupHttpServer(this.proxy, options)
+
     if (options.https) {
-      this.certificates = options.https.certificates
-      options.https.interface = options.https.interface || options.interface
-      this.httpsServer = this.setupHttpsServer(this.proxy, options.https)
+      this.httpsOptions = { ...defaultHttpsOptions, ...options.https }
+      this.certificates =
+        'string' === typeof this.httpsOptions.certificates
+          ? new Certificates(this.httpsOptions.certificates)
+          : this.httpsOptions.certificates
+
+      this.httpsOptions.interface = this.httpsOptions.interface || options.interface
+      this.httpsServer = this.setupHttpsServer(this.proxy, this.httpsOptions)
     }
+
     if (options.letsEncrypt) {
-      this.letsEncrypt = new LetsEncrypt({ ...options.letsEncrypt, certificates: this.certificates, log: this.log })
+      this.letsEncrypt = new LetsEncryptUsingAcmeClient(
+        {
+          certificates: this.certificates,
+          log: this.log,
+          ...options.letsEncrypt
+        })
       this.letsEncryptHost = this.letsEncrypt.href
     }
+
     this.httpRouter = new HTTPRouter(
-      this.certificates,
       {
+        certificates: this.certificates,
         preferForwardedHost: options.preferForwardedHost,
-        routingHttps: !!options.https
-      },
-      this.letsEncrypt,
-      this.log)
+        routingHttps: !!this.httpsOptions,
+        letsEncrypt: this.letsEncrypt,
+        log: this.log
+      }
+    )
   }
 
   public get router() {
@@ -189,7 +164,7 @@ export default class HTTPReverseProxy {
       const target = this.httpRouter.getTarget(source, req)
       if (target) {
         if (this.shouldRedirectToHttps(source, target)) {
-          this.redirectToHttps(req, res, options.https);
+          this.redirectToHttps(req, res, this.httpsOptions);
         } else {
           //TO DO handle errors
           proxy.web(req, res, { target: target, secure: options.proxy.secure !== false }, (error, req, res) => {
@@ -223,9 +198,12 @@ export default class HTTPReverseProxy {
   }
 
   private shouldRedirectToHttps = (src: string, target: ProxyTargetUrl) => {
-    return this.certificates && this.certificates.getCertificate(src) && target.sslRedirect && target.host != this.letsEncryptHost;
+    return this.certificates
+      && this.certificates.getCertificate(src)
+      && target.sslRedirect
+      && target.host != this.letsEncryptHost; //TO DO - I think this is WRONG
   }
-
+  
   private redirectToHttps = (req: ExtendedIncomingMessage, res: http.ServerResponse, httpsOptions: HttpsServerOptions) => {
     req.url = req.originalUrl || req.url; // Get the original url since we are going to redirect.
 

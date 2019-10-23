@@ -4,11 +4,9 @@ import log from '../src/simpleLogger'
 const secret = "Jqxr3DyfBVtGbRWB73qScP"
 const key = "2uMXHUQiS1_CqTB43kWthyvoUCExRyQqD"
 
-// [{"data":"v=spf1 a mx include:secureserver.net ~all","name":"@","ttl":3600,"type":"TXT"}]
-
 export class GoDaddyDNSUpdateTests extends GoDaddyDNSUpdate {
   constructor() {
-    super(key, secret)
+    super({APIKey:key, secret: secret})
     this.log = log
   }
 

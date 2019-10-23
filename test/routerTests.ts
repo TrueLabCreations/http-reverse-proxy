@@ -8,8 +8,8 @@ import LetsEncryptUsingAcmeClient from '../src/letsEnryptUsingAcmeClient'
 chai.use(chaiAsPromised)
 
 export class RouterTests extends Router {
-  constructor(certificates: Certificates, options: HTTPRouterOptions, letsEncrypt?: LetsEncryptUsingAcmeClient, log?: any) {
-    super(certificates, options, letsEncrypt, log)
+  constructor(options: HTTPRouterOptions) {
+    super(options)
   }
 
   public runRegistrationTests = async () => {

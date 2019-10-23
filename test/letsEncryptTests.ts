@@ -1,5 +1,5 @@
 import http from 'http'
-import LetsEncrypt, { LetsEncryptServerOptions } from '../src/letsEnryptUsingAcmeClient'
+import LetsEncrypt, { LetsEncryptClientOptions } from '../src/letsEnryptUsingAcmeClient'
 import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import 'mocha'
@@ -10,7 +10,7 @@ export class LetsEncryptTests extends LetsEncrypt {
   private domain: string
   private email: string
 
-  constructor(options: LetsEncryptServerOptions, domain: string, email: string) {
+  constructor(options: LetsEncryptClientOptions, domain: string, email: string) {
     super(options)
     this.domain = domain
     this.email = email

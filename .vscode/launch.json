@@ -13,7 +13,7 @@
         "-u",
         "tdd",
         "--timeout",
-        "50000",
+        "120000",
         "--colors",
         "${workspaceFolder}/dist/test/runInternalTests.js"
       ],
@@ -44,7 +44,7 @@
         },
       "program": "${workspaceFolder}/src/index.ts",
       "outFiles": [
-        "${workspaceFolder}/dist/*.js"
+        "${workspaceFolder}/dist/src/*.js"
       ],
       "cwd": "${workspaceFolder}/dist"
     }

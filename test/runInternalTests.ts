@@ -3,7 +3,7 @@ import { HTTPReverseProxyOptions } from '../src/httpReverseProxy'
 import { CertificateTests } from './certificateTests'
 import { LetsEncryptTests } from './letsEncryptTests'
 import { RouterTests } from './routerTests'
-import { LetsEncryptServerOptions } from '../src/letsEnryptUsingAcmeClient'
+import { LetsEncryptClientOptions } from '../src/letsEnryptUsingAcmeClient'
 import Certificates from '../src/certificates'
 import SimpleLogger from '../src/simpleLogger'
 import { HTTPRouterOptions, RegistrationHttpsOptions } from '../src/httpRouter'
@@ -59,15 +59,16 @@ const httpsRouterOptions: RegistrationHttpsOptions[] = [
 const secret = "Jqxr3DyfBVtGbRWB73qScP"
 const key = "2uMXHUQiS1_CqTB43kWthyvoUCExRyQqD"
 
-const letsEncryptServerOptions: LetsEncryptServerOptions = {
+const letsEncryptServerOptions: LetsEncryptClientOptions = {
   serverPort: 80,
   certificates: new Certificates('..\\certificates'),
   log: SimpleLogger,
-  dnsChallenge: new GoDaddyDNSUpdate(key, secret),
+  dnsChallenge: new GoDaddyDNSUpdate({APIKey: key, secret: secret}),
   // noVerify:true,
 }
 
 const httpRouterOptions: HTTPRouterOptions = {
+  certificates: new Certificates('..\\certificates'),
   preferForwardedHost: false,
   routingHttps: false
 }
@@ -79,12 +80,12 @@ const runTests = () => {
     certificateTests.TestAddingHosts()
 
     let letsEncryptTests: LetsEncryptTests
-    letsEncryptTests = new LetsEncryptTests(letsEncryptServerOptions, '*.swiedler.com', "tom@swiedler.com")
+    letsEncryptTests = new LetsEncryptTests(letsEncryptServerOptions, 'testing.swiedler.com', "tom@swiedler.com")
     letsEncryptTests.runLetsEncryptCheckServerTest()
-    letsEncryptTests.runLetsEncryptGetCertificateTest(true)
+    letsEncryptTests.runLetsEncryptGetCertificateTest(false)
 
     let routerTests: RouterTests
-    routerTests = new RouterTests(new Certificates('..\\certificates'), httpRouterOptions, null, null)
+    routerTests = new RouterTests(httpRouterOptions)
     routerTests.runRegistrationTests()
 
     let httpTest: HTTPReverseProxyTest

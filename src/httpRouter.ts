@@ -2,8 +2,8 @@ import http from 'http'
 import URL, { parse as urlParse } from 'url'
 import path from 'path'
 import Certificates from './certificates';
-import LetsEncryptUsingAcmeClient from './letsEnryptUsingAcmeClient';
 import {LoggerInterface} from './simpleLogger'
+import LetsEncryptClient from './letsEncrypt';
 
 export interface ProxyTargetUrl extends URL.Url {
   useTargetHostHeader?: boolean
@@ -50,8 +50,11 @@ export interface ExtendedIncomingMessage extends http.IncomingMessage {
 }
 
 export interface HTTPRouterOptions {
-  preferForwardedHost: boolean
+  certificates: Certificates
+  preferForwardedHost?: boolean
   routingHttps?:boolean
+  letsEncrypt?: LetsEncryptClient, 
+  log?: LoggerInterface
 }
 
 const defaultRegistrationOptions: RegistrationOptions = {
@@ -63,19 +66,19 @@ const ONE_DAY = 60 * 60 * 24 * 1000;
 const ONE_MONTH = ONE_DAY * 30;
 
 export default class HTTPRouter {
-  protected certificates: Certificates
-  protected letsEncrypt: LetsEncryptUsingAcmeClient
+  protected certificates?: Certificates
+  protected letsEncrypt: LetsEncryptClient
   protected preferForwardedHost: boolean
   protected log: any
   protected routingHttps: boolean
   protected routing: Routes = {};
 
-  constructor(certificates: Certificates, options: HTTPRouterOptions, letsEncrypt?: LetsEncryptUsingAcmeClient, log?: LoggerInterface) {
-    this.certificates = certificates
-    this.letsEncrypt = letsEncrypt
+  constructor(options: HTTPRouterOptions) {
+    this.certificates = options.certificates
+    this.letsEncrypt = options.letsEncrypt
     this.preferForwardedHost = this.preferForwardedHost
     this.routingHttps = options.routingHttps
-    this.log = log
+    this.log = options.log
   }
 
   public forward = (from: string | Partial<URL>, to: string | ProxyTargetUrl,
@@ -91,18 +94,18 @@ export default class HTTPRouter {
     from = this.prepareUrl(from);
 
     if (registrationOptions) {
-      const ssl: RegistrationHttpsOptions = registrationOptions.https as RegistrationHttpsOptions;
-      if (ssl) {
-        if (!this.routingHttps) {
-          throw Error('Cannot register https routes without defining an ssl port');
+      const https: RegistrationHttpsOptions = registrationOptions.https;
+      if (https) {
+        if (!this.routingHttps || !this.certificates) {
+          throw Error('Cannot register https routes without defining https and certificate options');
         }
 
         if (!this.certificates.getCertificate(from.hostname)) {
-          if ('object' === typeof ssl) {
-            if (ssl.keyPath || ssl.certificatePath || ssl.caPath) {
-              this.certificates.loadCertificateFromFiles(from.hostname, ssl.keyPath, ssl.certificatePath, ssl.caPath, true);
+          if ('object' === typeof https) {
+            if (https.keyPath || https.certificatePath || https.caPath) {
+              this.certificates.loadCertificateFromFiles(from.hostname, https.keyPath, https.certificatePath, https.caPath, true);
             }
-            else if (ssl.letsEncrypt) {
+            else if (https.letsEncrypt) {
               if (!this.letsEncrypt) {
                 console.error('Missing LetsEncrypt in router configuration');
                 return;

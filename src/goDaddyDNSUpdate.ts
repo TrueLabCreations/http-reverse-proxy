@@ -1,7 +1,8 @@
 import axios from 'axios'
 import { LoggerInterface } from '../src/simpleLogger'
+import  AbstractDNSUpdate, { AbstractDNSUpdateOptions } from './dnsUpdate'
 
-export interface DNSEntry {
+interface DNSEntry {
   type: string
   data: string
   name: string
@@ -10,84 +11,20 @@ export interface DNSEntry {
 
 const goDaddyAPIRoot = 'https://api.godaddy.com/v1'
 
-export interface GoDaddyDNSUpdateOptions {
-  key: string
+export interface GoDaddyDNSUpdateOptions extends AbstractDNSUpdateOptions {
+  APIKey: string
   secret: string
-  log?: LoggerInterface
 }
-export default class GoDaddyDNSUpdate {
+
+export default class GoDaddyDNSUpdate extends AbstractDNSUpdate{
   private apiKey: string
   private secret: string
   protected log: LoggerInterface
 
-  constructor(APIKey: string, secret: string, log?: LoggerInterface) {
-    this.apiKey = APIKey
-    this.secret = secret
-    this.log = log
-  }
-
-  protected getRecordsOfType = async (domain: string, type: string): Promise<DNSEntry[] | Error> => {
-
-    this.log && this.log.info({ domain: domain, type: type }, 'GoDaddy get records of type')
-
-    const url = `${this.buildGoDaddyDomainURL(domain)}/records/${type}`
-    try {
-      const response = await axios.get(url, {
-        headers: {
-          'Authorization': `sso-key ${this.apiKey}:${this.secret}`,
-        }
-      })
-      if (response.status === 200) {
-        const body = response.data
-        this.log && this.log.info({ records: body }, 'GoDaddy result')
-        return body
-      }
-      else {
-        this.log && this.log.info(response.data, `GoDaddy error: ${response.status}`)
-      }
-    }
-    catch (e) {
-      this.log && this.log.info(e, 'GoDaddy Error')
-      return e
-    }
-  }
-
-  protected updateRecordsOfType = async (domain: string, type: string, records: DNSEntry[]): Promise<boolean> => {
-    this.log && this.log.info(records, 'GoDaddy put records of type')
-
-    const url = `${this.buildGoDaddyDomainURL(domain)}/records/${type}`
-    try {
-      const options = {
-        headers: {
-          Authorization: `sso-key ${this.apiKey}:${this.secret}`,
-          'Content-Type': 'application/json',
-        }
-      }
-      return axios.put(url, records, options).then((response) => {
-        if (response.status === 200) {
-          const body = response.data
-          this.log && this.log.info({ records: body }, 'GoDaddy result')
-          return true
-        }
-        else {
-          this.log && this.log.info(response.data, `GoDaddy error: ${response.status}`)
-          return false
-        }
-      }).catch((error) => {
-        if (error.response) {
-          this.log && this.log.info(error.response.data, `GoDaddy error: ${error.response.status}`)
-          return false
-        }
-        else {
-          this.log && this.log.info(error, `GoDaddy error`)
-          return false
-        }
-      })
-    }
-    catch (e) {
-      this.log && this.log.info(e, 'GoDaddy Error')
-      return false
-    }
+  constructor(options: GoDaddyDNSUpdateOptions) {
+    super(options)
+    this.apiKey = options.APIKey
+    this.secret = options.secret
   }
 
   public addAcmeChallengeToDNS = async (domain: string, challenge: string): Promise<boolean> => {
@@ -127,6 +64,73 @@ export default class GoDaddyDNSUpdate {
       return true
     }
     return false
+  }
+
+  protected getRecordsOfType = async (domain: string, type: string): Promise<DNSEntry[] | Error> => {
+
+    this.log && this.log.info({ domain: domain, type: type }, 'GoDaddy get records of type')
+
+    const url = `${this.buildGoDaddyDomainURL(domain)}/records/${type}`
+
+    return axios.get(url, {
+      headers: {
+        'Authorization': `sso-key ${this.apiKey}:${this.secret}`,
+      }
+    }).then((response) => {
+      if (response.status === 200) {
+        const body = response.data
+        this.log && this.log.info({ records: body }, 'GoDaddy result')
+        return body
+      }
+      else {
+        this.log && this.log.info(response.data, `GoDaddy error: ${response.status}`)
+        return []
+      }
+    }).catch((error) => {
+      if (error.response) {
+        this.log && this.log.info(error.response.data, `GoDaddy get error: ${error.response.status}`)
+        return error
+      }
+      else {
+        this.log && this.log.info(error, `GoDaddy get error`)
+        return error
+      }
+    })
+  }
+
+  protected updateRecordsOfType = async (domain: string, type: string, records: DNSEntry[]): Promise<boolean> => {
+    this.log && this.log.info(records, 'GoDaddy put records of type')
+
+    const url = `${this.buildGoDaddyDomainURL(domain)}/records/${type}`
+    
+    const options = {
+      headers: {
+        Authorization: `sso-key ${this.apiKey}:${this.secret}`,
+        'Content-Type': 'application/json',
+      }
+    }
+
+    return axios.put(url, records, options).then((response) => {
+
+      if (response.status === 200) {
+        this.log && this.log.info(null, 'GoDaddy update success')
+        return true
+      }
+      else {
+        this.log && this.log.info(response.data, `GoDaddy update error: ${response.status}`)
+        return false
+      }
+    }).catch((error) => {
+      
+      if (error.response) {
+        this.log && this.log.info(error.response.data, `GoDaddy update error: ${error.response.status}`)
+        return false
+      }
+      else {
+        this.log && this.log.info(error, `GoDaddy update error`)
+        return false
+      }
+    })
   }
 
   private buildGoDaddyDomainURL = (domain: string): string => {
