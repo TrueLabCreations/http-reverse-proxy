@@ -1,5 +1,5 @@
 import http from 'http'
-import LetsEncrypt, { LetsEncryptServerOptions } from '../letsEnryptUsingAcmeClient'
+import LetsEncrypt, { LetsEncryptServerOptions } from '../src/letsEnryptUsingAcmeClient'
 import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import 'mocha'

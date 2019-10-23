@@ -1,8 +1,8 @@
 import httpProxy from 'http-proxy'
 import http from 'http'
 import https from 'https'
-import tls, { SecureContext } from 'tls'
-import url, { parse as urlParse } from 'url'
+import net from 'net'
+import { SecureContext } from 'tls'
 import path from 'path'
 import fs from 'fs'
 import acmeClient from 'acme-client'
@@ -205,28 +205,28 @@ export default class HTTPReverseProxy {
     // Listen to the `upgrade` event and proxy the
     // WebSocket requests as well.
     //
-    // server.on('upgrade', websocketsUpgrade);
+    server.on('upgrade', this.websocketsUpgrade)
 
     server.on('error', function (err) {
-      this.log && this.log.error(err, 'Server Error');
+      this.log && this.log.error(err, 'Server Error')
     });
 
-    server.on('listening',  () =>{
+    server.on('listening', () => {
       const serverAddress = server.address()
-        this.log && this.log.info(serverAddress, 
-          `HTTP server listening`);
+      this.log && this.log.info(serverAddress,
+        `HTTP server listening`);
     })
 
     server.listen(options.port, options.interface)
 
-    return server;
+    return server
   }
 
-  shouldRedirectToHttps = (src: string, target: ProxyTargetUrl) => {
+  private shouldRedirectToHttps = (src: string, target: ProxyTargetUrl) => {
     return this.certificates && this.certificates.getCertificate(src) && target.sslRedirect && target.host != this.letsEncryptHost;
   }
 
-  redirectToHttps = (req: ExtendedIncomingMessage, res: http.ServerResponse, httpsOptions: HttpsServerOptions) => {
+  private redirectToHttps = (req: ExtendedIncomingMessage, res: http.ServerResponse, httpsOptions: HttpsServerOptions) => {
     req.url = req.originalUrl || req.url; // Get the original url since we are going to redirect.
 
     const targetPort = httpsOptions.redirectPort || httpsOptions.port;
@@ -297,7 +297,7 @@ export default class HTTPReverseProxy {
     //   // Listen to the `upgrade` event and proxy the
     //   // WebSocket requests as well.
     //   //
-    //   // server.on('upgrade', websocketsUpgrade);
+    httpsServer.on('upgrade', this.websocketsUpgrade);
 
     httpsServer.on('error', function (err: Error) {
       this.log && this.log.error(err, 'HTTPS Server Error');
@@ -307,10 +307,10 @@ export default class HTTPReverseProxy {
       this.log && this.log.error(err, 'HTTPS Client Error');
     });
 
-    httpsServer.on('listening',  () =>{
+    httpsServer.on('listening', () => {
       const serverAddress = httpsServer.address()
-        this.log && this.log.info(serverAddress, 
-          `HTTPS server listening`);
+      this.log && this.log.info(serverAddress,
+        `HTTPS server listening`);
     })
 
     httpsServer.listen(httpsOptions.port, httpsOptions.interface);
@@ -318,6 +318,19 @@ export default class HTTPReverseProxy {
     return httpsServer;
   }
 
+  protected websocketsUpgrade = (req: ExtendedIncomingMessage, socket: net.Socket, head: Buffer | null) => {
+    socket.on('error', function (err) {
+      this.log && this.log.error(err, 'WebSockets error');
+    });
+    const src = this.router.getSource(req);
+    const target = this.router.getTarget(src, req)
+    this.log && this.log.info({ headers: req.headers, target: target }, 'upgrade to websockets');
+    if (target) {
+      this.proxy.ws(req, socket, head, { target: target });
+    } else {
+      socket.end("Not Found")
+    }
+  }
 
   protected respondNotFound = (req: http.IncomingMessage, res: http.ServerResponse) => {
     res.statusCode = 404;

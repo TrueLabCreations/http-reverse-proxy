@@ -13,7 +13,7 @@
         "-u",
         "tdd",
         "--timeout",
-        "999999",
+        "50000",
         "--colors",
         "${workspaceFolder}/dist/test/runInternalTests.js"
       ],
@@ -28,7 +28,7 @@
         {
           "NODE_ENV":"development"
         },
-      "program": "${workspaceFolder}/src/test/runInternalTests.ts",
+      "program": "${workspaceFolder}/test/runInternalTests.ts",
       "outFiles": [
         "${workspaceFolder}/dist/test/*.js"
       ],

@@ -1,11 +1,9 @@
-import http from 'http'
-import https from 'https'
 import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import 'mocha'
-import Router, { HTTPRouterOptions } from '../httpRouter'
-import Certificates from '../certificates'
-import LetsEncryptUsingAcmeClient from '../letsEnryptUsingAcmeClient'
+import Router, { HTTPRouterOptions } from '../src/httpRouter'
+import Certificates from '../src/certificates'
+import LetsEncryptUsingAcmeClient from '../src/letsEnryptUsingAcmeClient'
 
 chai.use(chaiAsPromised)
 

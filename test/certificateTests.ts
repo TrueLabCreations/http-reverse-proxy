@@ -1,5 +1,5 @@
 import tls from 'tls'
-import Certificates from '../certificates'
+import Certificates from '../src/certificates'
 import chai, { expect } from 'chai'
 import 'mocha'
 

@@ -1,13 +1,13 @@
 import http from 'http'
 import https from 'https'
-import { RegistrationHttpsOptions } from '../httpRouter'
+import HTTPReverseProxy, { HTTPReverseProxyOptions } from '../src/httpReverseProxy'
+import { RegistrationHttpsOptions } from '../src/httpRouter'
 import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import 'mocha'
 
 chai.use(chaiAsPromised)
 
-import HTTPReverseProxy, { HTTPReverseProxyOptions } from '../httpReverseProxy'
 
 export class HTTPReverseProxyTest extends HTTPReverseProxy {
   constructor(options: HTTPReverseProxyOptions) {

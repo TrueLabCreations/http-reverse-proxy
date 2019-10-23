@@ -1,13 +1,14 @@
 import { HTTPReverseProxyTest } from './httpReverseProxyTest'
-import HTTPReverseProxy, { HTTPReverseProxyOptions } from '../httpReverseProxy'
+import { HTTPReverseProxyOptions } from '../src/httpReverseProxy'
 import { CertificateTests } from './certificateTests'
 import { LetsEncryptTests } from './letsEncryptTests'
 import { RouterTests } from './routerTests'
-import { LetsEncryptServerOptions } from '../letsEnryptUsingAcmeClient'
-import Certificates from '../certificates'
-import SimpleLogger from '../simpleLogger'
-import { HTTPRouterOptions, RegistrationHttpsOptions } from '../httpRouter'
-import simpleLogger from '../simpleLogger'
+import { LetsEncryptServerOptions } from '../src/letsEnryptUsingAcmeClient'
+import Certificates from '../src/certificates'
+import SimpleLogger from '../src/simpleLogger'
+import { HTTPRouterOptions, RegistrationHttpsOptions } from '../src/httpRouter'
+import { GoDaddyDNSUpdateTests } from './goDaddyDNSUpdateTest'
+import GoDaddyDNSUpdate from '../src/goDaddyDNSUpdate'
 
 const httpTestOptions: HTTPReverseProxyOptions = {
   port: 8080,
@@ -55,11 +56,15 @@ const httpsRouterOptions: RegistrationHttpsOptions[] = [
   },
 ]
 
+const secret = "Jqxr3DyfBVtGbRWB73qScP"
+const key = "2uMXHUQiS1_CqTB43kWthyvoUCExRyQqD"
+
 const letsEncryptServerOptions: LetsEncryptServerOptions = {
   serverPort: 80,
   certificates: new Certificates('..\\certificates'),
   log: SimpleLogger,
-  noVerify:true,
+  dnsChallenge: new GoDaddyDNSUpdate(key, secret),
+  // noVerify:true,
 }
 
 const httpRouterOptions: HTTPRouterOptions = {
@@ -74,7 +79,7 @@ const runTests = () => {
     certificateTests.TestAddingHosts()
 
     let letsEncryptTests: LetsEncryptTests
-    letsEncryptTests = new LetsEncryptTests(letsEncryptServerOptions, 'testing.swiedler.com', "tom@swiedler.com")
+    letsEncryptTests = new LetsEncryptTests(letsEncryptServerOptions, '*.swiedler.com', "tom@swiedler.com")
     letsEncryptTests.runLetsEncryptCheckServerTest()
     letsEncryptTests.runLetsEncryptGetCertificateTest(true)
 
