@@ -1,246 +1,202 @@
 import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import 'mocha'
-import Router, { HTTPRouterOptions } from '../src/httpRouter'
+import HttpRouter, { HTTPRouterOptions } from '../src/httpRouter'
 import Certificates from '../src/certificates'
-import LetsEncryptUsingAcmeClient from '../src/letsEnryptUsingAcmeClient'
+import LetsEncryptUsingAcmeClient from '../src/letsEncryptUsingAcmeClient'
+import { makeUrl } from '../src/util'
 
 chai.use(chaiAsPromised)
 
-export class RouterTests extends Router {
-  constructor(options: HTTPRouterOptions) {
-    super(options)
+export class RouterTests extends HttpRouter {
+  constructor(hostname: string, options: HTTPRouterOptions) {
+    super(hostname, options)
   }
 
   public runRegistrationTests = async () => {
-    // this.log = null
 
-    // this.startServers();
     describe('Route registration', () => {
+
+      it(`should catch route parameter errors`, () => {
+
+        expect(this.routes).to.be.an('array')
+        expect(this.routes).to.have.lengthOf(0)
+
+        expect(() => this.addRoute(makeUrl('test.local.com'), null)).to.throw('Cannot add a new route with invalid "from" or "to"')
+
+        expect(() => this.addRoute(null, 'http://localhost:9001')).to.throw('Cannot add a new route with invalid "from" or "to"')
+
+        expect(() => this.addRoute(makeUrl('test.local.com'), [null, undefined, ''])).to.throw('Cannot add a new route with invalid "from" or "to"')
+
+        expect(this.noRoutes()).to.be.true
+      })
+
       it(`should register a route`, () => {
-        expect(this.routing).to.be.an('object')
 
-        this.forward('test.local.com', 'http://localhost:9001')
+        this.addRoute(makeUrl('test.local.com'), 'http://localhost:9001')
 
-        expect(this.routing).to.have.property('test.local.com')
+        expect(this.routes).to.have.lengthOf(1)
+        expect(this.routes[0].path).to.equal('/')
 
-        const route = this.resolve('test.local.com')
-
-        expect(route).to.be.an('object')
-
-        const hostEntry = this.routing['test.local.com']
-        expect(hostEntry).to.be.an('array')
-        expect(hostEntry).to.have.lengthOf(1)
-        const hostRoute = hostEntry[0]
-        expect(hostRoute).to.have.property('path')
-        expect(hostRoute.path).to.be.equal('/')
-        expect(hostRoute.targets).to.be.an('array')
-        expect(hostRoute.targets).to.have.lengthOf(1)
-        expect(hostRoute.targets[0].href).to.be.equal('http://localhost:9001/')
-
-        this.unforward('test.local.com', 'http://localhost:9001')
-
-        expect(this.resolve('test.local.com')).to.be.null
-      })
-
-      it('should register multiple routes', () => {
-        let index = 0
-
-        for (index = 0; index < 10; ++index) {
-          this.forward(`test${index}.local.com`, `http://localhost:900${index}`)
-
-          expect(this.routing).to.have.property(`test${index}.local.com`)
-        }
-
-        for (index = 0; index < 10; ++index) {
-
-          const route = this.resolve(`test${index}.local.com`)
-
-          expect(route).to.be.an('object')
-
-          const hostEntry = this.routing[`test${index}.local.com`]
-          expect(hostEntry).to.be.an('array')
-          expect(hostEntry).to.have.lengthOf(1)
-          const hostRoute = hostEntry[0]
-          expect(hostRoute).to.have.property('path')
-          expect(hostRoute.path).to.be.equal('/')
-          expect(hostRoute.targets).to.be.an('array')
-          expect(hostRoute.targets).to.have.lengthOf(1)
-          expect(hostRoute.targets[0].hostname).to.be.equal('localhost')
-          expect(hostRoute.targets[0].host).to.be.equal(`localhost:900${index}`)
-          expect(hostRoute.targets[0].href).to.be.equal(`http://localhost:900${index}/`)
-        }
-
-        for (index = 0; index < 10; ++index) {
-          this.unforward(`test${index}.local.com`, `http://localhost:900${index}`)
-
-          expect(this.resolve(`test${index}.local.com`)).to.be.null
-        }
-      })
-
-      it('should register multiple paths', () => {
-
-        const paths = ['test1', 'test2', 'test3', 'test4']
-        const routes = ['testing1', 'testing2', 'testing3', 'testing4']
-
-        paths.forEach((path, index) => {
-          this.forward(`test.local.com/${path}`, `http://localhost:9001/${routes[index]}`)
-          expect(this.routing).to.have.property('test.local.com')
-          expect(this.resolve(`test.local.com`, `/${path}`)).to.be.an('object')
-        })
-
-        const hostEntry = this.routing['test.local.com']
-
-        expect(hostEntry).to.be.an('array')
-        expect(hostEntry).to.have.lengthOf(4)
-
-        paths.forEach((path, index) => {
-
-          const hostRoute = hostEntry[index]
-
-          expect(hostRoute).to.have.property('path')
-          expect(hostRoute.path).to.be.equal(`/${path}`)
-          expect(hostRoute.targets).to.be.an('array')
-          expect(hostRoute.targets).to.have.lengthOf(1)
-          expect(hostRoute.targets[0].hostname).to.be.equal('localhost')
-          expect(hostRoute.targets[0].host).to.be.equal('localhost:9001')
-          expect(hostRoute.targets[0].href).to.be.equal(`http://localhost:9001/${routes[index]}`)
-        })
-
-        paths.forEach((path, index) => {
-          this.unforward(`test.local.com/${path}`, `http://localhost:9001/${routes[index]}`)
-
-          expect(this.resolve('test.local.com', `/${path}`)).to.be.null
-        })
-      })
-
-      it('should register several pathnames in a route', () => {
-        const paths = ['test.local1.com', 'test.local1.com/test/abc', 'test.local1.com/abc', 'test.local1.com/123']
-        const routes = ['server1.remote.com', 'server2.remote.com', 'server3.remote.com', 'server4.remote.com']
-
-        paths.forEach((path, index) => {
-          this.forward(path, routes[index])
-        })
-
-        expect(this.routing).to.have.property('test.local1.com')
-        const host = this.routing['test.local1.com']
-        expect(host).to.be.an('array')
-        expect(host).to.have.lengthOf(paths.length)
-        const route = host[0]
-        expect(route).to.have.property('path')
-        expect(route.path).to.be.equal('/test/abc')
-        expect(route.targets).to.be.an('array')
-        expect(route.targets).to.have.lengthOf(1)
-        expect(route.targets[0].href).to.be.equal('http://server2.remote.com/')
-        expect(host[0].path.length).to.be.least(host[1].path.length)
-        expect(host[1].path.length).to.be.least(host[2].path.length)
-        expect(host[2].path.length).to.be.least(host[3].path.length)
-
-        paths.forEach((path, index) => {
-          this.unforward(path, routes[index])
-        })
-      })
-
-      it('should resolve domains as case insensitive', () => {
-        this.forward('Test.loCal.com', 'http://LocalHost:9001')
-
-        expect(this.routing).to.have.property('test.local.com')
-
-        const route = this.resolve('tesT.locAl.com')
+        const route = this.resolve('/')
 
         expect(route).to.be.an('object')
-        expect(route.targets).to.be.an('array')
+        expect(route.noTargets()).to.be.false
         expect(route.targets).to.have.lengthOf(1)
-        expect(route.targets[0].hostname).to.be.equal('localhost')
         expect(route.targets[0].host).to.be.equal('localhost:9001')
-        expect(route.targets[0].href).to.be.equal('http://localhost:9001/')
+        expect(route.targets[0].protocol).to.be.equal('http:')
+        expect(route.targets[0].port).to.be.equal('9001')
 
-        this.unforward('test.local.com', 'http://localhost:9001')
-        expect(this.resolve('tesT.locAl.com')).to.be.null
-        expect(this.resolve('test.local.com')).to.be.null
+        this.removeRoute(makeUrl('test.local.com'), 'http://localhost:9001')
+        expect(route.noTargets()).to.be.true
+
+        this.removeRoute(makeUrl('test.local.com'))
+        expect(this.noRoutes()).to.be.true
       })
 
-      it('should handle unregistering an unregistered host gracefully', () => {
-        this.unforward('unknown.local.com')
+      it(`should register multiple targets`, () => {
+
+        this.addRoute(makeUrl('test.local.com'), 'http://localhost:9001')
+
+        expect(this.routes).to.have.lengthOf(1)
+        expect(this.routes[0].path).to.equal('/')
+
+        const route = this.resolve('/')
+        this.addRoute(makeUrl('test.local.com'), 'http://localhost:9002')
+
+        expect(route.targets).to.have.lengthOf(2)
+        expect(route.targets[1].host).to.be.equal('localhost:9002')
+        expect(route.targets[1].protocol).to.be.equal('http:')
+        expect(route.targets[1].port).to.be.equal('9002')
+
+        this.addRoute(makeUrl('test.local.com'), 'http://localhost:9002')
+        expect(route.targets).to.have.lengthOf(2)
+
+        this.addRoute(makeUrl('test.local.com'), 'http://localhost:9003')
+        this.addRoute(makeUrl('test.local.com'), 'http://localhost:9004')
+
+        expect(route.targets).to.have.lengthOf(4)
+
+        this.addRoute(makeUrl('test.local.com'),
+          ['http://localhost:9005', 'http://localhost:9006', makeUrl('localhost:9007')])
+
+        expect(route.targets).to.have.lengthOf(7)
+
+        this.removeRoute(makeUrl('test.local.com'), 'http://localhost:9002')
+
+        expect(route.targets).to.have.lengthOf(6)
+
+        this.removeRoute(makeUrl('test.local.com'), 'http://localhost:9002')
+        expect(route.targets).to.have.lengthOf(6)
+
+        this.removeRoute(makeUrl('test.local.com'), [null, null])
+        expect(route.targets).to.have.lengthOf(6)
+
+        this.removeRoute(makeUrl('test.local.com'))
+        expect(route.noTargets()).to.be.true
+
+        this.removeRoute(makeUrl('test.local.com'))
+        expect(this.noRoutes()).to.be.true
       })
 
-      it('should have and empty routing table', () => {
-        expect(Object.keys(this.routing).length).to.be.equal(0)
+      it(`should register multiple routes`, () => {
+
+        this.addRoute(makeUrl('test.local.com'), 'http://localhost:9001')
+
+        expect(this.routes).to.have.lengthOf(1)
+        expect(this.routes[0].path).to.equal('/')
+
+        const rootRoute = this.resolve('/')
+
+        this.addRoute(makeUrl('test.local.com/test'), 'http://localhost:9001')
+
+        expect(this.routes).to.have.lengthOf(2)
+        expect(this.routes[0].path).to.equal('/test')
+        expect(this.routes[1].path).to.equal('/')
+
+        this.addRoute(makeUrl('test.local.com/testing'), 'http://localhost:9001')
+        expect(this.routes).to.have.lengthOf(3)
+        expect(this.routes[0].path).to.equal('/testing')
+        expect(this.routes[1].path).to.equal('/test')
+        expect(this.routes[2].path).to.equal('/')
+
+        this.addRoute(makeUrl('test.local.com/test/foo'), 'http://localhost:9001')
+        expect(this.routes).to.have.lengthOf(4)
+        expect(this.routes[0].path).to.equal('/test/foo')
+        expect(this.routes[1].path).to.equal('/testing')
+        expect(this.routes[2].path).to.equal('/test')
+        expect(this.routes[3].path).to.equal('/')
+
+        this.addRoute(makeUrl('test.local.com/tested'), 'http://localhost:9001')
+        expect(this.routes).to.have.lengthOf(5)
+        expect(this.routes[0].path).to.equal('/test/foo')
+        expect(this.routes[1].path).to.equal('/testing')
+        expect(this.routes[2].path).to.equal('/tested')
+        expect(this.routes[3].path).to.equal('/test')
+        expect(this.routes[4].path).to.equal('/')
+
+        this.removeRoute(makeUrl('test.local.com/tested'))
+        expect(this.routes).to.have.lengthOf(4)
+        this.removeRoute(makeUrl('test.local.com/testing'))
+        expect(this.routes).to.have.lengthOf(3)
+        this.removeRoute(makeUrl('test.local.com'))
+        expect(this.routes).to.have.lengthOf(2)
+        this.removeRoute(makeUrl('testlocal.com/test'))
+        expect(this.routes).to.have.lengthOf(1)
+        this.removeRoute(makeUrl('test.local.com/test/foo'))
+
+        expect(this.noRoutes()).to.be.true
       })
 
-      it('should resolve partial paths', () => {
-        const paths = ['test.local2.com', 'test.local2.com/test/abc', 'test.local2.com/abc', 'test.local2.com/123']
-        const routes = ['server1.remote.com', 'server2.remote.com', 'server3.remote.com', 'server4.remote.com']
+      it('should set target options', () => {
 
-        paths.forEach((path, index) => {
-          this.forward(path, routes[index])
-        })
+        this.addRoute(makeUrl('test.local.com/tested'), 'http://localhost:9001', { secureOutbound: true })
 
-        expect(this.routing).to.have.property('test.local2.com')
+        expect(this.routes[0].targets[0].secure).to.be.true
+        expect(this.routes[0].targets[0].useTargetHostHeader).to.be.false
 
-        const target = this.resolve('test.local2.com', '/abc/def/123')
+        this.addRoute(makeUrl('test.local.com/tested'), 'https://localhost:9002')
 
-        expect(target.path).to.equal('/abc')
-        expect(target.targets).has.lengthOf(1)
-        expect(target.targets[0].href).to.be.equal('http://server3.remote.com/')
+        expect(this.routes[0].targets[1].secure).to.be.true
+        expect(this.routes[0].targets[1].useTargetHostHeader).to.be.false
 
-        paths.forEach((path, index) => {
-          this.unforward(path, routes[index])
-        })
-      })
-      it('should resolve unregistered route to null', () => {
-        const paths = ['test.local3.com/def', 'test.local3.com/test/abc', 'test.local3.com/abc', 'test.local3.com/123']
-        const routes = ['server1.remote.com', 'server2.remote.com', 'server3.remote.com', 'server4.remote.com']
+        this.addRoute(makeUrl('test.local.com/tested'), 'http://localhost:9003')
 
-        paths.forEach((path, index) => {
-          this.forward(path, routes[index])
-        })
+        expect(this.routes[0].targets[2].secure).to.be.false
+        expect(this.routes[0].targets[2].useTargetHostHeader).to.be.false
 
-        expect(this.resolve('test.local1.com')).to.be.null
-        expect(this.resolve('test.local3.com')).to.be.null
+        this.addRoute(makeUrl('test.local.com/tested'), 'http://localhost:9004', { useTargetHostHeader: true })
 
-        paths.forEach((path, index) => {
-          this.unforward(path, routes[index])
-        })
-      })
+        expect(this.routes[0].targets[3].secure).to.be.false
+        expect(this.routes[0].targets[3].useTargetHostHeader).to.be.true
 
-      it('should get route if available', () => {
-        const paths = ['test.local4.com', 'test.local4.com/test/abc', 'test.local4.com/abc', 'test.local4.com/123',
-          'test.local5.com/abc']
-        const routes = ['server1.remote.com', 'server2.remote.com', 'server3.remote.com', 'server4.remote.com', 'server5.remote.com']
+        this.addRoute(makeUrl('test.local.com/tested'), 'localhost:9005', { secureOutbound: true, useTargetHostHeader: true })
 
-        paths.forEach((path, index) => {
-          this.forward(path, routes[index])
-        })
+        expect(this.routes[0].targets[4].secure).to.be.true
+        expect(this.routes[0].targets[4].useTargetHostHeader).to.be.true
 
-        expect(this.resolve('test.local4.com', '/test/def/123').path).to.be.equal('/')
-        expect(this.resolve('test.local5.com', '/test')).to.be.null
-        expect(this.resolve('test.local5.com', '/abcs')).to.be.null
-        expect(this.resolve('test.local4.com', '/abc/123').path).to.be.equal('/abc')
-        expect(this.getTarget('test.local4.com', { url: '/abc/123/test' } as any).href).to.be.equal('http://server3.remote.com/')
-        paths.forEach((path, index) => {
-          this.unforward(path, routes[index])
-        })
+        this.addRoute(makeUrl('test.local.com/tested'), 'https://localhost:9006', { useTargetHostHeader: true })
+
+        expect(this.routes[0].targets[5].secure).to.be.true
+        expect(this.routes[0].targets[5].useTargetHostHeader).to.be.true
+
+        this.addRoute(makeUrl('test.local.com/tested'), 'https://localhost:9007', { secureOutbound: false })
+
+        expect(this.routes[0].targets[6].secure).to.be.false
+        expect(this.routes[0].targets[6].useTargetHostHeader).to.be.false
+
+        this.removeRoute(makeUrl('test.local.com/tested'))
+
+        expect(this.noRoutes()).to.be.true
+
       })
 
-      it('should get a target with a path', () => {
-        const paths = ['test.local4.com', 'test.local4.com/test/abc', 'test.local4.com/test', 'test.local4.com/123',
-          'test.local5.com/abc']
-        const routes = ['server1.remote.com', 'server2.remote.com/abc/123', 'server3.remote.com/321/cba', 'server4.remote.com', 'server5.remote.com']
+      it('should throw an error with a missing https certificate source', () => {
+        // this.routingHttps = true
 
-        paths.forEach((path, index) => {
-          this.forward(path, routes[index])
-        })
-
-        expect(this.resolve('test.local4.com', '/def/123').path).to.be.equal('/')
-        expect(this.getTarget('test.local4.com', { url: '/test/123/456' } as any).href).to.be.equal('http://server3.remote.com/321/cba')
-        paths.forEach((path, index) => {
-          this.unforward(path, routes[index])
-        })
-      })
-
-      it('should have and empty routing table', () => {
-        expect(Object.keys(this.routing).length).to.be.equal(0)
+        expect(() => this.addRoute(makeUrl('https://test.local.com'),
+          'localhost:9001', { https: { redirectToHttps: true } })).to.throw(
+            'Cannot register https routes without certificate option')
       })
     })
   }

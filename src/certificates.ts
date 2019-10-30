@@ -101,14 +101,14 @@ export default class Certificates {
 
   public loadCertificateFromFiles = (
     hostName: string,
-    keyFilePath: string,
-    certificateFilePath: string | string[],
-    caFilePath?: string | string[],
+    keyFilename: string,
+    certificateFileName: string | string[],
+    caFilename?: string | string[],
     loadCertificateData?: boolean): boolean => {
 
-    const key = this.getCertificateData(keyFilePath, false)
-    const certificate = this.getCertificateData(certificateFilePath, false)
-    const ca = caFilePath && this.getCertificateData(caFilePath, true)
+    const key = this.getCertificateData(keyFilename, false)
+    const certificate = this.getCertificateData(certificateFileName, false)
+    const ca = caFilename && this.getCertificateData(caFilename, true)
 
     return this.loadCertificate(hostName, key, certificate, ca, loadCertificateData)
   }

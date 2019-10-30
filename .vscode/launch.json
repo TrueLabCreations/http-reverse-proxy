@@ -7,6 +7,12 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Test JS",
+      "program": "${workspaceFolder}/src/testJS.js"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Mocha Tests",
       "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
       "args": [
@@ -23,12 +29,26 @@
     {
       "type": "node",
       "request": "launch",
-      "name":"Run Test",
+      "name":"Run Internal Test",
       "env":
         {
           "NODE_ENV":"development"
         },
       "program": "${workspaceFolder}/test/runInternalTests.ts",
+      "outFiles": [
+        "${workspaceFolder}/dist/test/*.js"
+      ],
+      "cwd": "${workspaceFolder}/dist"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name":"Run External Test",
+      "env":
+        {
+          "NODE_ENV":"development"
+        },
+      "program": "${workspaceFolder}/test/runExternalTests.ts",
       "outFiles": [
         "${workspaceFolder}/dist/test/*.js"
       ],
