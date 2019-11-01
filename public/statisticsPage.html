@@ -1,0 +1,111 @@
+<html>
+  <head>
+    <title>Http Proxy Statistics</title>
+    <style>
+      table{
+        border-collapse: collapse;
+      }
+      tr:nth-child(odd){
+        background-color: lightgrey;
+        font-weight: bold;
+      }
+      th{
+        padding: 10px;
+        background-color: grey;
+        color: white;
+        font-size: 16pt;
+      }
+      td {
+        padding: 5px;
+      }
+      td:nth-child(2), td:nth-child(3){
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>
+      HTTP Proxy server statistics
+    </h1>
+
+    <button onclick="startService()">Start</button>
+
+    <button onclick="stopService()">Stop</button>
+
+    <hr />
+
+    <!-- <textarea id="log"></textarea> -->
+    <div id="output"></div>
+
+    <script>
+      var ws = null;
+      var priorEvents = {};
+
+      function startService() {
+        if (!ws) {
+          startWebsocket()
+        }
+      }
+
+      function stopService() {
+        if (ws) {
+          ws.send(`{"command": "stop"}`)
+          // ws.close()
+        }
+      }
+
+      function startWebsocket() {
+        ws = new WebSocket("ws://localhost:3001");
+
+        ws.onopen = event => {
+          ws.send(`{"command": "start"}`);
+        };
+
+        ws.onmessage = event => {
+          el = document.getElementById("output");
+
+          if (el) {
+            events = JSON.parse(event.data);
+            properties = Object.keys(events).sort();
+            names = properties.map(property =>
+              property
+                .replace(/[A-Z]/g, c => ` ${c}`)
+                .replace(/:/g, ": ")
+                .trim()
+            );
+            rows = properties
+              .map(
+                (property, index) =>
+                  `<tr><td>${names[index]}</td><td>${
+                    events[property]
+                  }</td><td>${events[property] -
+                    (priorEvents[property] || 0)}</td></tr>`
+              )
+              .join("");
+
+            el.innerHTML =
+              "<table><thead><tr><th>Metric</th><th>Total</th><th>Delta</th></tr></thead><tbody>" +
+              rows +
+              "</tbody></table>";
+            priorEvents = events;
+          }
+
+          // alert("message received");
+        };
+
+        ws.onerror = event => {
+          alert(error.message);
+          ws = null;
+        };
+
+        ws.onclose = event => {
+          ws = null;
+        };
+      }
+
+      // window.onload = function(e) {
+      //   startWebsocket();
+      // };
+    </script>
+  </body>
+</html>

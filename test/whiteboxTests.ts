@@ -73,7 +73,7 @@ const letsEncryptSelfSignedOptions: LetsEncryptSelfSignedOptions = {
 }
 
 const letsEncryptServerOptions: LetsEncryptClientOptions = {
-  serverPort: 80,
+  port: 80,
   certificates: new Certificates('..\\certificates'),
   log: SimpleLogger,
   dnsChallenge: new GoDaddyDNSUpdate({APIKey: goDaddyAPIKey, secret: goDaddySecret}),
@@ -109,23 +109,24 @@ const runTests = () => {
     // letsEncryptselfSignedTests = new LetsEncryptUsingSelfSignedTests(letsEncryptSelfSignedOptions, 'server1.test.com', "tom@swiedler.com")
     // letsEncryptselfSignedTests.runLetsEncryptGetCertificateTest(false)
 
-    let letsEncryptAcmeClientTests: LetsEncryptUsingAcmeClientTests
-    letsEncryptAcmeClientTests = new LetsEncryptUsingAcmeClientTests(letsEncryptServerOptions, 'testing.swiedler.com', "tom@swiedler.com")
-    letsEncryptAcmeClientTests.runLetsEncryptCheckServerTest()
-    letsEncryptAcmeClientTests.runLetsEncryptGetCertificateTest(true)
+    // let letsEncryptAcmeClientTests: LetsEncryptUsingAcmeClientTests
+    // letsEncryptAcmeClientTests = new LetsEncryptUsingAcmeClientTests(letsEncryptServerOptions, 'testing.swiedler.com', "tom@swiedler.com")
+    // letsEncryptAcmeClientTests.runLetsEncryptCheckServerTest()
+    // letsEncryptAcmeClientTests.runLetsEncryptGetCertificateTest(true)
 
     let routerTests: RouterTests
     routerTests = new RouterTests('server1.test.com', httpRouterOptions)
+    routerTests.runRouteTest ()
     routerTests.runRegistrationTests()
 
-    let httpTest: HTTPReverseProxyTest
-    httpTest = new HTTPReverseProxyTest(httpTestOptions)
-    httpTest.runHttpProxyTests()
+    // let httpTest: HTTPReverseProxyTest
+    // httpTest = new HTTPReverseProxyTest(httpTestOptions)
+    // httpTest.runHttpProxyTests()
 
-    let httpsTest: HTTPReverseProxyTest
-    httpsTest = new HTTPReverseProxyTest(httpsTestOptions)
-    // httpsTest.runHttpsProxyTests(httpsRouterOptions)
-    httpsTest.runHttpsProxyWithCertificatesTests('testing.swiedler.com', httpsRouterWithCertificateOptions)
+    // let httpsTest: HTTPReverseProxyTest
+    // httpsTest = new HTTPReverseProxyTest(httpsTestOptions)
+    // // httpsTest.runHttpsProxyTests(httpsRouterOptions)
+    // httpsTest.runHttpsProxyWithCertificatesTests('testing.swiedler.com', httpsRouterWithCertificateOptions)
 
   } catch (e) {
 

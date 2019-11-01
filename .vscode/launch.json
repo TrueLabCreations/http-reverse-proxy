@@ -21,7 +21,7 @@
         "--timeout",
         "120000",
         "--colors",
-        "${workspaceFolder}/dist/test/runInternalTests.js"
+        "${workspaceFolder}/dist/test/whiteboxTests.js"
       ],
       "internalConsoleOptions": "openOnSessionStart",
       "cwd": "${workspaceFolder}/dist"
@@ -29,12 +29,12 @@
     {
       "type": "node",
       "request": "launch",
-      "name":"Run Internal Test",
+      "name":"Run Whitebox Tests",
       "env":
         {
           "NODE_ENV":"development"
         },
-      "program": "${workspaceFolder}/test/runInternalTests.ts",
+      "program": "${workspaceFolder}/test/whiteboxTests.ts",
       "outFiles": [
         "${workspaceFolder}/dist/test/*.js"
       ],
@@ -43,12 +43,12 @@
     {
       "type": "node",
       "request": "launch",
-      "name":"Run External Test",
+      "name":"Run Blackbox Tests",
       "env":
         {
           "NODE_ENV":"development"
         },
-      "program": "${workspaceFolder}/test/runExternalTests.ts",
+      "program": "${workspaceFolder}/test/blackboxLocalTests.ts",
       "outFiles": [
         "${workspaceFolder}/dist/test/*.js"
       ],

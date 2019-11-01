@@ -5,7 +5,8 @@ import Certificates from './certificates';
 import { LoggerInterface } from './simpleLogger'
 import LetsEncryptClient from './letsEncrypt';
 import { ProxyUrl, makeUrl, startsWith, respondNotFound } from './util';
-import Route from './Route'
+import Route from './route'
+import Statistics from './statistics';
 
 export interface RegistrationLetsEncryptOptions {
   email: string
@@ -26,6 +27,7 @@ export interface RouteRegistrationOptions {
   https?: RegistrationHttpsOptions,// | boolean,
   secureOutbound?: boolean
   useTargetHostHeader?: boolean
+  stats?: Statistics
 }
 
 export interface ExtendedIncomingMessage extends http.IncomingMessage {
@@ -40,6 +42,7 @@ export interface HTTPRouterOptions {
   redirectPort?: number
   letsEncrypt?: LetsEncryptClient,
   log?: LoggerInterface
+  stats?: Statistics
 }
 
 const defaultRegistrationOptions: RouteRegistrationOptions = {
@@ -57,6 +60,7 @@ export default class HTTPRouter {
   protected https: RegistrationHttpsOptions
   protected letsEncrypt: LetsEncryptClient
   protected log: LoggerInterface
+  protected stats: Statistics
   protected redirectPort: number
   protected routes: Route[]
 
@@ -69,6 +73,7 @@ export default class HTTPRouter {
     this.redirectPort = options.redirectPort
     this.routes = []
     this.log = options.log
+    this.stats = options.stats
 
     if (options.https) {
       this.setupCertificates(options.https)
@@ -91,12 +96,12 @@ export default class HTTPRouter {
 
     if (!route) {
 
-      // if (options.https) {
-      //   this.setupCertificates(from, options)
-      // }
-
-      route = new Route(pathname)
+      route = new Route(pathname, this.log, this.stats)
       this.routes.push(route)
+
+      this.stats && this.stats.updateCount(`ActivePathsFor:${this.hostname}`, 1)
+
+      this.stats && this.stats.updateCount(`PathsAddedFor:${this.hostname}`, 1)
     }
 
     route.addTargets(to, options)
@@ -104,6 +109,10 @@ export default class HTTPRouter {
     if (route.noTargets()) {
 
       this.routes = this.routes.filter((value) => value !== route)
+
+      this.stats && this.stats.updateCount(`ActivePathsFor:${this.hostname}`, -1)
+      this.stats && this.stats.updateCount(`PathsRemovedFor:${this.hostname}`, 1)
+
       throw Error('Cannot add a new route with invalid "from" or "to"');
     }
     //
@@ -131,6 +140,9 @@ export default class HTTPRouter {
       if (route.noTargets()) {
 
         this.routes = this.routes.filter((value) => value !== route)
+
+        this.stats && this.stats.updateCount(`ActivePathsFor:${this.hostname}`, -1)
+        this.stats && this.stats.updateCount(`PathsRemovedFor:${this.hostname}`, 1)
       }
     }
 
@@ -147,25 +159,40 @@ export default class HTTPRouter {
 
     const target = this.getTarget(req)
 
+    this.stats && this.stats.updateCount(`HttpRouteRequestsFor:${this.hostname}`, 1)
+
     if (target) {
 
       if (this.shouldRedirectToHttps(target)) {
+
         this.redirectToHttps(req, res);
       }
       else {
 
         //TO DO handle errors
-        this.proxy.web(req, res, { target: target, secure: target.secure },
+        try {
+          this.proxy.web(req, res, { target: target, secure: target.secure },
 
-          (error: any, req: http.IncomingMessage, res: http.ServerResponse) => {
+            (error: any, req: http.IncomingMessage, res: http.ServerResponse) => {
 
-            respondNotFound(req, res)
-          });
+              respondNotFound(req, res)
+
+              this.stats && this.stats.updateCount(`HttpProxyFailuresFor:${this.hostname}`, 1)
+            })
+        }
+        catch (err) {
+
+          respondNotFound(req, res);
+
+          this.stats && this.stats.updateCount(`HttpProxyFailuresFor:${this.hostname}`, 1)
+        }
       }
     }
     else {
 
       respondNotFound(req, res);
+
+      this.stats && this.stats.updateCount(`HttpRouteFailuresFor:${this.hostname}`, 1)
     }
 
   }
@@ -174,18 +201,32 @@ export default class HTTPRouter {
 
     const target = this.getTarget(req)
 
+    this.stats && this.stats.updateCount(`HttpsRouteRequestsFor:${this.hostname}`, 1)
+
     if (target) {
 
-      this.proxy.web(req, res, { target: target, secure: target.secure },
+      try {
+        this.proxy.web(req, res, { target: target, secure: target.secure },
 
-        (error: any, req: http.IncomingMessage, res: http.ServerResponse) => {
+          (error: any, req: http.IncomingMessage, res: http.ServerResponse) => {
 
-          respondNotFound(req, res)
-        });
+            respondNotFound(req, res)
+
+            this.stats && this.stats.updateCount(`HttpsProxyFailuresFor:${this.hostname}`, 1)
+          })
+      }
+      catch (err) {
+
+        respondNotFound(req, res)
+
+        this.stats && this.stats.updateCount(`HttpsProxyFailuresFor:${this.hostname}`, 1)
+      }
     }
     else {
 
       respondNotFound(req, res);
+
+      this.stats && this.stats.updateCount(`HttpsRouteFailuresFor:${this.hostname}`, 1)
     }
   }
 
@@ -214,6 +255,8 @@ export default class HTTPRouter {
 
     res.writeHead(302, { Location: url });
     res.end();
+
+    this.stats && this.stats.updateCount(`HttpRedirectsFor:${this.hostname}`, 1)
   }
 
   protected setupCertificates = (options: RegistrationHttpsOptions) => {
@@ -229,7 +272,9 @@ export default class HTTPRouter {
       if ('object' === typeof options) {
 
         if (options.keyFilename || options.certificateFilename || options.caFilename) {
-          this.certificates.loadCertificateFromFiles(this.hostname, options.keyFilename, options.certificateFilename, options.caFilename, false);
+          this.certificates.loadCertificateFromFiles(this.hostname, options.keyFilename, options.certificateFilename, options.caFilename, false)
+
+          this.stats && this.stats.updateCount(`CertificatesLoadedFor:${this.hostname}`, 1)
         }
         else if (options.letsEncrypt) {
 
@@ -239,6 +284,8 @@ export default class HTTPRouter {
           }
 
           this.log && this.log.info(null, `Getting Let's Encrypt certificates for ${this.hostname}`);
+
+          this.stats && this.stats.updateCount(`CertificateRequestsFor:${this.hostname}`, 1)
 
           this.letsEncrypt.getLetsEncryptCertificate(
             this.hostname,
@@ -263,7 +310,9 @@ export default class HTTPRouter {
 
     if (!route) {
 
+      this.stats && this.stats.updateCount(`TargetFailuresFor:${this.hostname}`, 1)
       this.log && this.log.warn({ host: req.headers.host, url: url }, 'no valid route found for given source');
+
       return null;
     }
 
@@ -282,7 +331,7 @@ export default class HTTPRouter {
     const target = route.nextTarget();
 
     //
-    // Fix request url if targetname specified.
+    // Fix request url if target pathname specified.
     //
     if (target.pathname) {
       req.url = path.join(target.pathname, req.url).replace(/\\/g, '/');
@@ -296,7 +345,8 @@ export default class HTTPRouter {
       req.headers.host = target.host;
     }
 
-    this.log && this.log.info(null, `Proxying ${req.headers.host}${url} to ${target.href}${req.url}`)
+    this.stats && this.stats.updateCount(`TargetRequestsFor:${this.hostname}${pathname} to ${target.host}${target.pathname}`, 1)
+    this.log && this.log.info(null, `Proxying ${req.headers.host}${pathname} to ${target.href}${target.pathname}`)
 
     return target;
   }
@@ -331,9 +381,13 @@ export default class HTTPRouter {
 
   protected resolve = (url?: string): Route | null => {
 
+    this.stats && this.stats.updateCount(`RouteResolutionsFor:${this.hostname}`, 1)
+
     url = url || '/';
 
     if (this.letsEncrypt && /^\/.well-known\/acme-challenge\//.test(url)) {
+
+      this.stats && this.stats.updateCount(`AcmeRequestsFor:${this.hostname}`, 1)
 
       return new Route('/').addTargets(this.letsEncrypt.href, {})
     }

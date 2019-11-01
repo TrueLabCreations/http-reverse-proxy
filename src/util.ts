@@ -51,6 +51,6 @@ export const startsWith = (input: string, str: string): boolean => {
 export const respondNotFound = (req: http.IncomingMessage, res: http.ServerResponse) => {
 
   res.statusCode = 404
-  res.write('Not Found');
+  res.write('HTTP/1.1 404 Not Found');
   res.end()
 };

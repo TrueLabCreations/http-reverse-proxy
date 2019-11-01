@@ -4,8 +4,8 @@ import AbstractDNSUpdate from "./dnsUpdate";
 import { LoggerInterface } from "./simpleLogger";
 
 export interface BaseLetsEncryptOptions {
-  serverInterface?: string
-  serverPort?: number
+  networkInterface?: string
+  port?: number
   certificates?: Certificates
   dnsChallenge?: AbstractDNSUpdate
   dnsNameServer?: string
@@ -21,8 +21,8 @@ const oneMonth = 30 * 24 * 60 * 60 * 1000
 export default class BaseLetsEncryptClient {
   protected certificates: Certificates
   protected log: LoggerInterface
-  protected serverInterface: string
-  protected serverPort: number
+  protected networkInterface: string
+  protected port: number
   protected httpServer: http.Server
   protected dnsChallenge: AbstractDNSUpdate
   protected dnsNameServer: string
@@ -31,8 +31,8 @@ export default class BaseLetsEncryptClient {
   constructor(options: BaseLetsEncryptOptions) {
     this.log = options.log
     this.certificates = options.certificates
-    this.serverInterface = options.serverInterface 
-    this.serverPort = options.serverPort || 3000
+    this.networkInterface = options.networkInterface 
+    this.port = options.port || 3000
     this.httpServer = this.setupLetsEncryptServer()
     this.dnsChallenge = options.dnsChallenge
     this.dnsNameServer = options.dnsNameServer
@@ -52,14 +52,14 @@ export default class BaseLetsEncryptClient {
   }
 
   public get href() {
-    return `http://${this.serverInterface}:${this.serverPort}/.well-known/acme-challenge`
+    return `http://${this.networkInterface}:${this.port}/.well-known/acme-challenge`
   }
 
-  public get host (){
-    return this.serverInterface
+  public get serverInterface (){
+    return this.networkInterface
   }
 
-  public get port() {
+  public get serverPort() {
     return this.port
   }
 
@@ -103,7 +103,7 @@ export default class BaseLetsEncryptClient {
         `LetsEncrypt server listening to HTTP requests`);
     })
 
-    server.listen(this.serverPort, this.serverInterface)
+    server.listen(this.port, this.networkInterface)
 
     return server;
   }

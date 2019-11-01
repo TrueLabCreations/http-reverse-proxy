@@ -6,6 +6,8 @@ import SimpleHTTPServer from './simpleHttpServer'
 import { LetsEncryptUsingSelfSigned, LetsEncryptSelfSignedOptions } from './LetsEncryptUsingSelfSigned'
 import { HTTPRouterOptions } from './httpRouter'
 import { RouteRegistrationOptions} from './httpRouter'
+import Statistics from './statistics'
+import StatisticsServer, { StatisticsServerOptions } from './statisticsServer'
 
 
 /**
@@ -29,6 +31,7 @@ const httpOptions: HTTPReverseProxyOptions = {
     certificates: '../certificates',
   },
   log: simpleLogger,
+  stats: new Statistics()
 }
 
 const forwardingOptions:RouteRegistrationOptions={
@@ -44,12 +47,29 @@ const forwardingOptions:RouteRegistrationOptions={
 const server1 = new SimpleHTTPServer(1, 8001)
 const server2 = new SimpleHTTPServer(2, 8002)
 
+const statisticsOptions: StatisticsServerOptions = {
+
+  noStart: true,
+  stats: httpOptions.stats,
+
+  http:{
+    port: 3001
+  },
+
+  // websocket:{},
+}
+
+const statisticsServer = new StatisticsServer(statisticsOptions)
+
 server1.start()
 server2.start()
+statisticsServer.start()
 
 const proxy = new HTTPReverseProxy(httpOptions, LetsEncryptUsingSelfSigned)
 
-proxy.addRoute('https://server1.test.com', 'localhost:8001', forwardingOptions)
+proxy.addRoute('http://server9.test.com', 'localhost:3001')
+
+proxy.addRoute('https://server1.test.com/testing', 'localhost:8001', forwardingOptions)
 //, {
   // https: {
   //   redirect: false,
@@ -58,7 +78,7 @@ proxy.addRoute('https://server1.test.com', 'localhost:8001', forwardingOptions)
   // }
 // })
 
-proxy.addRoute('https://server2.test.com', 'localhost:8002/Extended', forwardingOptions)
+proxy.addRoute('https://server2.test.com/tested', 'localhost:8002/Extended', forwardingOptions)
 // , {
   // https: {
   //   redirect: false,

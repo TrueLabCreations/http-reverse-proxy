@@ -2,15 +2,86 @@ import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import 'mocha'
 import HttpRouter, { HTTPRouterOptions } from '../src/httpRouter'
-import Certificates from '../src/certificates'
-import LetsEncryptUsingAcmeClient from '../src/letsEncryptUsingAcmeClient'
 import { makeUrl } from '../src/util'
+import Route from '../src/route'
 
 chai.use(chaiAsPromised)
 
 export class RouterTests extends HttpRouter {
+
   constructor(hostname: string, options: HTTPRouterOptions) {
+
     super(hostname, options)
+  }
+
+  public runRouteTest = () => {
+
+    describe('Routes', () => {
+
+      const route = new Route('/')
+
+      it('should have no targets', () => {
+
+        expect(route.noTargets()).to.be.true
+      })
+
+      it('should have 1 target', () => {
+
+        route.addTargets('not a valid url', {})
+
+        expect(route.targets).to.have.lengthOf(1)
+        expect(route.targets[0].hostname).to.be.equal('not')
+        expect(route.targets[0].pathname).to.be.equal("%20a%20valid%20url")
+      })
+
+      it('should remove the target', () => {
+        
+        route.removeTargets('not a valid url')
+
+        expect(route.noTargets()).to.be.true
+      })
+
+      it('should add multiple targets', () => {
+        
+        route.addTargets(['target1', 'target2', 'target3', 'target4'], {})
+
+        expect(route.targets).to.have.lengthOf(4)
+      })
+
+      it('should remove the middle targets', () =>{
+
+        route.removeTargets(['target2', 'target3'])
+
+        expect(route.targets).to.have.lengthOf(2)
+        expect(route.targets[0].hostname).to.be.equal('target1')
+        expect(route.targets[1].hostname).to.be.equal('target4')
+      })
+
+      it('should remove only the first target', () =>{
+
+        route.removeTargets(['', null, undefined, 'target1', 'target5'])
+
+        expect(route.targets).to.have.lengthOf(1)
+        expect(route.targets[0].hostname).to.be.equal('target4')
+      })
+
+      it('should have no targets', () =>{
+
+        route.removeAllTargets()
+        expect (route.noTargets()).to.be.true
+      })
+
+      it('should provide targets in a round-robin',() =>{
+
+        route.addTargets(['target1', 'target2', 'target3', 'target4'], {})
+
+        expect(route.nextTarget().hostname).to.be.equal('target1')
+        expect(route.nextTarget().hostname).to.be.equal('target2')
+        expect(route.nextTarget().hostname).to.be.equal('target3')
+        expect(route.nextTarget().hostname).to.be.equal('target4')
+        expect(route.nextTarget().hostname).to.be.equal('target1')
+      })
+    })
   }
 
   public runRegistrationTests = async () => {
@@ -191,13 +262,6 @@ export class RouterTests extends HttpRouter {
 
       })
 
-      it('should throw an error with a missing https certificate source', () => {
-        // this.routingHttps = true
-
-        expect(() => this.addRoute(makeUrl('https://test.local.com'),
-          'localhost:9001', { https: { redirectToHttps: true } })).to.throw(
-            'Cannot register https routes without certificate option')
-      })
     })
   }
 }

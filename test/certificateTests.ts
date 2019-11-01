@@ -49,54 +49,69 @@ KjcBsrilsxwsGqzrovvVbucVOtEZnx2t7ipI9EfSvuU=
 
   public TestAddingHosts = () => {
     describe('Test adding an empty context', () => {
+
       it('should add the empty context', () => {
+
         expect(this.addCertificate('test.host.com', this.emptyContext)).to.be.true
       })
 
       it('should not add the same host again', () => {
+
         expect(this.addCertificate('test.host.com', this.emptyContext)).to.be.false
       })
 
       it('should update the same host', () => {
+
         expect(this.updateCertificate('test.host.com', this.emptyContext)).to.be.true
       })
 
       it('should not retrieve an unknown host', () => {
+
         expect(this.getCertificate('test1.host.com')).to.be.undefined
       })
 
       it('should retrieve the empty context', () => {
+
         expect(this.getCertificate('test.host.com')).to.be.an('object')
       })
 
       it('should remove the test certificate', () => {
+
         expect(this.removeCertificate('test.host.com')).to.be.true
       })
 
       it('should not remove a non existant certificate', () => {
+
         expect(this.removeCertificate('test.host.com')).to.be.false
       })
 
       it('should have an empty certificate table', () => {
+
         expect(Object.keys(this.certificates)).to.have.length(0)
       })
     })
 
     describe('test adding certificates', () => {
+
       it('should add a valid certificate', () => {
+
         expect(this.loadCertificate('test.host.com', this.testKey, this.testCertificate)).to.be.true
       })
 
       it('should remove the certificate', () => {
+
         expect(this.removeCertificate('test.host.com')).to.be.true
       })
 
       it('should add a valid certificate and extract additional data', () => {
+
         expect(this.loadCertificate('test.host.com', this.testKey, this.testCertificate, null, true)).to.be.true
       })
 
       it('should get the addtional data', () => {
+
         const additionalInfo = this.getCertificateInformation('test.host.com')
+        
         expect(additionalInfo).to.be.an('object')
         expect(additionalInfo).to.have.property('expiresOn')
         expect(additionalInfo.expiresOn).to.be.a('Date')
@@ -105,6 +120,7 @@ KjcBsrilsxwsGqzrovvVbucVOtEZnx2t7ipI9EfSvuU=
       })
 
       it('should remove the certificate', () => {
+
         expect(this.removeCertificate('test.host.com')).to.be.true
       })
     })
@@ -112,21 +128,26 @@ KjcBsrilsxwsGqzrovvVbucVOtEZnx2t7ipI9EfSvuU=
     describe('test loading certificates from files', () => {
 
       it('should load a certificate from files', () => {
+
         expect(this.loadCertificateFromFiles('test.host.com', '../certificates/testing_swiedler_com_key.pem',
           '../certificates/testing_swiedler_com_crt.pem')).to.be.true
       })
 
       it('should remove the certificate', () => {
+
         expect(this.removeCertificate('test.host.com')).to.be.true
       })
 
       it('should load a certificate from files with additional data', () => {
+
         expect(this.loadCertificateFromFiles('test.host.com', '../certificates/testing_swiedler_com_key.pem',
           '../certificates/testing_swiedler_com_crt.pem', null, true)).to.be.true
       })
 
       it('should get the addtional data', () => {
+
         const additionalInfo = this.getCertificateInformation('test.host.com')
+        
         expect(additionalInfo).to.be.an('object')
         expect(additionalInfo).to.have.property('expiresOn')
         expect(additionalInfo.expiresOn).to.be.a('Date')
@@ -135,6 +156,7 @@ KjcBsrilsxwsGqzrovvVbucVOtEZnx2t7ipI9EfSvuU=
       })
 
       it('should remove the certificate', () => {
+
         expect(this.removeCertificate('test.host.com')).to.be.true
       })
     })
@@ -142,19 +164,24 @@ KjcBsrilsxwsGqzrovvVbucVOtEZnx2t7ipI9EfSvuU=
     describe('test loading certificates from store', () => {
 
       it('should load a certificate from store', () => {
+
         expect(this.loadCertificateFromStore('testing.swiedler.com')).to.be.true
       })
 
       it('should remove the certificate', () => {
+
         expect(this.removeCertificate('testing.swiedler.com')).to.be.true
       })
 
       it('should load a certificate from store with additional data', () => {
+
         expect(this.loadCertificateFromStore('testing.swiedler.com', true)).to.be.true
       })
 
       it('should get the addtional data', () => {
+
         const additionalInfo = this.getCertificateInformation('testing.swiedler.com')
+        
         expect(additionalInfo).to.be.an('object')
         expect(additionalInfo).to.have.property('commonName')
         expect(additionalInfo.commonName).to.be.a('string')
@@ -167,28 +194,38 @@ KjcBsrilsxwsGqzrovvVbucVOtEZnx2t7ipI9EfSvuU=
     })
 
     describe('Test multiple certificates',() =>{
+
       it('should load 100 certificates',()=>{
+      
         const testInformation = {
           expiresOn: new Date(),
           commonName: ''
         }
 
         for (let i = 0; i< 100; ++i){
+
           expect(this.addCertificate(`test${i}.host.com`, Object.assign({}, this.emptyContext))).to.be.true
+          
           const certificate = this.certificates[`test${i}.host.com`]
+          
           expect(certificate).to.be.an('object')
+          
           certificate.certificateInformation=Object.assign({}, testInformation)
           certificate.certificateInformation.commonName = `test${i}.host.com`
+          
           expect(this.getCertificateInformation(`test${i}.host.com`)).to.be.an('object')
         }
       })
 
       it('should have 100 certificates', () =>{
+
         expect(Object.keys(this.getActiveCertificates())).to.have.lengthOf(100)
       })
 
       it('should have the proper common names', ()=>{
+
         for (let i = 0; i< 100; ++i){
+
           expect(this.getCertificateInformation(`test${i}.host.com`)).to.be.an('object')
           expect(this.getCertificateInformation(`test${i}.host.com`).commonName).to.be.a('string')
           expect(this.getCertificateInformation(`test${i}.host.com`).commonName).to.be.equal(`test${i}.host.com`)
@@ -196,13 +233,16 @@ KjcBsrilsxwsGqzrovvVbucVOtEZnx2t7ipI9EfSvuU=
       })
 
       it('should clear all certificates', ()=>{
+
         for (let i = 0; i< 100; ++i){
+
           expect(this.getCertificateInformation(`test${i}.host.com`)).to.be.an('object')
           expect(this.removeCertificate(`test${i}.host.com`)).to.be.true
         }
       })
 
       it('should have no certificates',()=>{
+
         expect(Object.keys(this.getActiveCertificates())).to.have.lengthOf(0)
       })
     })
