@@ -14,13 +14,14 @@ const statisticsOptions: StatisticsServerOptions = {
   },
   websocket: {
 
-    updateInterval: 1000
+    updateInterval: 1000,
+    // filter: ['Active', 'Route']
   }
 }
 
 const httpProxyOptions: HTTPReverseProxyOptions = {
 
-  proxy: {
+  proxyOptions: {
   
     xfwd: true,
     // agent: false,

@@ -44,7 +44,7 @@ This should bring up the hello message from server1.
 
 Change the address to http://server2.test.com and the second server should respond
 
-You are now running a reverse proxy sharing a front end ip address (port 80)
+You are now running a reverse proxy sharing a single front end ip address (port 80)
 
 >Running a simple secure (with self signed certificates) HTTPS server
 
@@ -52,10 +52,10 @@ You are now running a reverse proxy sharing a front end ip address (port 80)
 
 ## HTTP Server options
 
-```js
+```ts
 interface HTTPReverseProxyOptions {
   port?: number
-  interface?: string
+  networkInterface?: string
   proxy?: ExtendedProxyOptions
   https?: HttpsServerOptions
   letsEncrypt?: BaseLetsEncryptOptions
@@ -64,13 +64,14 @@ interface HTTPReverseProxyOptions {
 }
 ```
 
-#### Port: {number} The inbound port used to listen for http connections. Defaults to 80
+>port: {number} The inbound port used to listen for http connections. Defaults to 80
 
-#### Interface: {network-address} The network interface to listen for http connections. Defaults to all interfaces
+>networkInterface: {network-address} The network interface to listen for http connections. Defaults to all interfaces
 
-#### proxy: {object} The http-proxy options. Defaults to
+>proxy: {object} The http-proxy options. A complete list of the options can be found [here](https://github.com/http-party/node-http-proxy#options). 
+Defaults to:
 
-```js
+```ts
 {
   ntlm: false,
   prependPath: false,

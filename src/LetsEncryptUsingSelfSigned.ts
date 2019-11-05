@@ -109,9 +109,11 @@ export class LetsEncryptUsingSelfSigned extends BaseLetsEncryptClient {
       certificate: forge.pki.certificateToPem(certificate)
     }
 
+    this.stats && this.stats.updateCount('SelfSignedCertificatesRequested', 1)
     this.log && this.log.info(pem, 'Certificate created.')
 
     this.certificates.saveCertificateToStore(host, pem.privateKey, pem.certificate )
+    this.certificates.propogateNewCredential(host, pem.privateKey, pem.certificate )
 
     return true
   }

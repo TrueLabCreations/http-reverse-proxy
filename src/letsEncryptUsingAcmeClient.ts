@@ -20,22 +20,23 @@ export interface LetsEncryptClientOptions extends BaseLetsEncryptOptions {
   noVerify?: boolean
 }
 
-interface ChallengeTable {
-  [hostAndToken: string]: string
-}
+// interface ChallengeTable {
+//   [hostAndToken: string]: string
+// }
 
-export default class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient{
+export default class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
 
   protected noVerify: boolean
 
   constructor(options: LetsEncryptClientOptions) {
+
     super(options)
     this.noVerify = options.noVerify
   }
 
   protected getNewCertificate = async (
-    host: string, 
-    production: boolean, 
+    host: string,
+    production: boolean,
     email: string): Promise<boolean> => {
 
     this.log && this.log.info(
@@ -47,6 +48,8 @@ export default class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient{
       'Requesting new certificate from LetsEncrypt')
 
     let returnResult = true
+
+    this.stats && this.stats.updateCount('AcmeChallengeCertificatesRequested', 1)
 
     const clientOptions: acmeClient.Options = {
       directoryUrl: production ? acmeClient.directory.letsencrypt.production : acmeClient.directory.letsencrypt.staging,
@@ -79,32 +82,48 @@ export default class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient{
 
     this.log && this.log.info({ ...challenge, key: keyAuthorization }, 'LetsEncryt adding challenge')
 
-    if (! await this.addChallenge(challenge, host, keyAuthorization))
-      return false;
+    if (! await this.createChallenge(challenge, host, keyAuthorization)) {
+
+      this.stats && this.stats.updateCount('AcmeChallengeCertificatesFailed', 1)
+
+      return false
+    }
 
     try {
-      if (!this.noVerify)
+
+      if (!this.noVerify) {
+
         await client.verifyChallenge(authorization, challenge)
+      }
 
       await client.completeChallenge(challenge)
 
       await client.waitForValidStatus(challenge)
     }
+
     catch (e) {
+
+      this.stats && this.stats.updateCount('AcmeChallengeCertificatesFailed', 1)
       this.log && this.log.error(null, 'New certificate from LetsEncrypt failed')
 
       returnResult = false
     }
+
     finally {
+
       try {
-        this.removeChallenge(challenge, host)
+
+        this.destroyChallenge(challenge, host)
       }
+
       catch (e) {
       }
     }
 
-    if (!returnResult)
+    if (!returnResult) {
+
       return false
+    }
 
     const csrOptions: CsrOptions = {
       commonName: host
@@ -114,9 +133,12 @@ export default class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient{
     await client.finalizeOrder(order, csr);
     const certificate: string = await client.getCertificate(order);
 
+    this.stats && this.stats.updateCount('AcmeChallengeCertificatesSucceeded', 1)
+
     this.certificates.saveCertificateToStore(host, key.toString(), certificate)
-    this.certificates.removeCertificate(host)
-    this.certificates.loadCertificate(host, key.toString(), certificate)
+    this.certificates.propogateNewCredential(host, key.toString(), certificate)
+    // this.certificates.removeCertificate(host)
+    // this.certificates.loadCertificate(host, key.toString(), certificate)
 
     this.log && this.log.info({
       host: host,
@@ -128,28 +150,41 @@ export default class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient{
     return true
   }
 
-  protected addChallenge = async (
+  protected createChallenge = async (
+
     challenge: Challenge,
     host: string,
     keyAuthorization: string): Promise<boolean> => {
 
     const waitForNamseServerToUpdate = async (attempts: number): Promise<boolean> => {
+
       while (attempts > 0) {
+
         try {
+
           const resolve = new dns.promises.Resolver()
           resolve.setServers([this.dnsNameServer])
+
           const result = await resolve.resolveTxt(`_acme-challenge.${host.replace(/\*\./g, '')}`)
           const records = [].concat(...result)
+
           if (records.indexOf(keyAuthorization) >= 0)
+
             return true
         }
+
         catch (e) { }
+
         finally {
+
           if (--attempts > 0) {
+
             await new Promise((resolve) => {
+
               setTimeout(() => {
                 resolve()
               }, 3000)
+
             })
           }
         }
@@ -158,43 +193,67 @@ export default class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient{
     }
 
     switch (challenge.type) {
+
       case 'http-01':
-        const key = `${host}_${(challenge as Http01Challenge).token.replace(/\W-/g, '')}`
-        this.outstandingChallenges[key] = keyAuthorization
+
+        this.addChallenge(host, (challenge as Http01Challenge).token, keyAuthorization)
         return true
+
       case 'dns-01':
+
         if (this.dnsChallenge) {
+
+          this.stats && this.stats.updateCount('AcmeDNSChallengesRequested', 1)
+
           if (await this.dnsChallenge.addAcmeChallengeToDNS(host.replace(/\*\./g, ''), keyAuthorization)) {
+
             if (this.dnsNameServer) {
+
               if (await waitForNamseServerToUpdate(5)) {
+
+                this.stats && this.stats.updateCount('AcmeDNSChallengesWritten', 1)
+
                 this.log && this.log.info(null, `DNS challenge resolved from ${this.dnsNameServer}`)
                 return true
               }
             }
             else {
+
               return true
             }
           }
         }
+
+        this.stats && this.stats.updateCount('AcmeDNSChallengesFailed', 1)
+
         return false
+
       default:
+
+        this.stats && this.stats.updateCount('AcmeUnhandledChallenges', 1)
+        
         return false
     }
   }
 
-  protected removeChallenge = async (
+  protected destroyChallenge = async (
     challenge: Challenge,
     host: string): Promise<boolean> => {
 
     switch (challenge.type) {
+
       case 'http-01':
-        const key = `${host}_${(challenge as Http01Challenge).token.replace(/\W-/g, '')}`
-        delete this.outstandingChallenges[key]
+
+        this.removeChallenge(host, (challenge as Http01Challenge).token)
         return true
+
       case 'dns-01':
+
         return this.dnsChallenge &&
           await this.dnsChallenge.removeAcmeChallengeFromDNS(host.replace(/\*\./g, ''))
+
       default:
+
         return false
     }
   }

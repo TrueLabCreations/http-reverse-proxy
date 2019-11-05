@@ -3,7 +3,7 @@ import LetsEncryptUsingAcmeClient, { LetsEncryptClientOptions } from '../src/let
 import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import 'mocha'
-import { LetsEncryptUsingSelfSigned, LetsEncryptSelfSignedOptions } from '../src/LetsEncryptUsingSelfSigned'
+import { LetsEncryptUsingSelfSigned, LetsEncryptSelfSignedOptions } from '../src/letsEncryptUsingSelfSigned'
 
 chai.use(chaiAsPromised)
 

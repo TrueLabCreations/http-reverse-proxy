@@ -55,7 +55,7 @@
       }
 
       function startWebsocket() {
-        ws = new WebSocket("ws://localhost:3001");
+        ws = new WebSocket(`ws://${window.location.hostname}:${window.location.port}${window.location.pathname}`)
 
         ws.onopen = event => {
           ws.send(`{"command": "start"}`);
@@ -89,17 +89,17 @@
               "</tbody></table>";
             priorEvents = events;
           }
+        }
 
-          // alert("message received");
-        };
+        ws.onerror = (event) => {
 
-        ws.onerror = event => {
-          alert(error.message);
-          ws = null;
+          alert(`Websocket error. Target ${event.target}`)
+          ws = null
         };
 
         ws.onclose = event => {
-          ws = null;
+
+          ws = null
         };
       }
 

@@ -5,7 +5,7 @@ import 'mocha'
 
 export class CertificateTests extends Certificates {
   constructor(certificateStoreRoot: string) {
-    super(certificateStoreRoot)
+    super({certificateStoreRoot: certificateStoreRoot})
   }
   emptyContext: tls.SecureContext = {
     context: {

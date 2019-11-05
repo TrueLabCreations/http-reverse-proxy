@@ -10,11 +10,11 @@ import SimpleLogger from '../src/simpleLogger'
 import { HTTPRouterOptions, RegistrationHttpsOptions } from '../src/httpRouter'
 import { GoDaddyDNSUpdateTests } from './goDaddyDNSUpdateTest'
 import GoDaddyDNSUpdate from '../src/goDaddyDNSUpdate'
-import { LetsEncryptSelfSignedOptions } from '../src/LetsEncryptUsingSelfSigned'
+import { LetsEncryptSelfSignedOptions } from '../src/letsEncryptUsingSelfSigned'
 
 const httpTestOptions: HTTPReverseProxyOptions = {
   port: 8080,
-  proxy: {
+  proxyOptions: {
     xfwd: false,
     secure: false,
     ntlm: false,
@@ -26,15 +26,15 @@ const httpTestOptions: HTTPReverseProxyOptions = {
 
 const httpsTestOptions: HTTPReverseProxyOptions = {
   port: 8080,
-  proxy: {
+  proxyOptions: {
     xfwd: false,
     secure: false,
     ntlm: false,
     prependPath: false,
   },
-  https: {
+  httpsOptions: {
     port: 8443,
-    certificates: new Certificates('..\\certificates'),
+    certificates: new Certificates({certificateStoreRoot: '..\\certificates'}),
     keyFilename: 'C:\\dev\\http-reverse-proxy\\certificates\\testing_swiedler_com\\testing_swiedler_com-key.pem',
     certificateFilename: 'C:\\dev\\http-reverse-proxy\\certificates\\testing_swiedler_com\\testing_swiedler_com-crt.pem'
   },
@@ -68,20 +68,20 @@ const letsEncryptSelfSignedOptions: LetsEncryptSelfSignedOptions = {
   country: 'US',
   state: 'Georgia',
   locality: 'Roswell',
-  certificates: new Certificates('..\\certificates'),
+  certificates: new Certificates({certificateStoreRoot: '..\\certificates'}),
   log: SimpleLogger,
 }
 
 const letsEncryptServerOptions: LetsEncryptClientOptions = {
   port: 80,
-  certificates: new Certificates('..\\certificates'),
+  certificates: new Certificates({certificateStoreRoot: '..\\certificates'}),
   log: SimpleLogger,
   dnsChallenge: new GoDaddyDNSUpdate({APIKey: goDaddyAPIKey, secret: goDaddySecret}),
   noVerify:true,
 }
 
 const httpRouterOptions: HTTPRouterOptions = {
-  // certificates: new Certificates('..\\certificates'),
+  // certificates: new Certificates({certificateStoreRoot: '..\\certificates'}),
   proxy: new httpProxy({
     xfwd: false,
     secure: false,

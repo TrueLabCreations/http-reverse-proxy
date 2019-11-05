@@ -18,12 +18,12 @@ const httpClient = async (hostname: string, expected: string) => {
         res.setEncoding('utf8')
         res.on('data', (chunk) => { body += chunk })
         res.on('end', () => {
-        
+
           if (body === expected) {
             resolve()
           }
           else {
-        
+
             reject(body.substr(0, 40))
           }
         })
@@ -48,6 +48,8 @@ const wsClient = async (hostname: string, send: string, receive: string) => {
     })
 
     ws.on('message', (message: string) => {
+
+      ws.close()
 
       if (message === receive) {
         resolve()
@@ -161,27 +163,27 @@ export const runHttpTests = async (iterations: number) => {
 
   const results = await Promise.all([
 
-    // runHttpTest('http test01', iterations, 'http://server1.test.com', `Test succeeded. Port 9001. URL:/`),
-    // runHttpTest('http test02', iterations, 'http://server2.test.com', `Test succeeded. Port 9002. URL:/`),
-    // runHttpTest('http test03', iterations, 'http://server3.test.com', `Test succeeded. Port 9003. URL:/`),
-    // runHttpTest('http test04', iterations, 'http://server1.test.com/testing', `Test succeeded. Port 9001. URL:/`),
-    // runHttpTest('http test05', iterations, 'http://server2.test.com/testing', `Test succeeded. Port 9002. URL:/`),
-    // runHttpTest('http test06', iterations, 'http://server3.test.com/testing', `Test succeeded. Port 9003. URL:/`),
-    // runHttpTest('http test07', iterations, 'http://server1.test.com/test', `Test succeeded. Port 9001. URL:/test/`),
-    // runHttpTest('http test08', iterations, 'http://server2.test.com/test', `Test succeeded. Port 9002. URL:/test/`),
-    // runHttpTest('http test09', iterations, 'http://server3.test.com/test', `Test succeeded. Port 9003. URL:/test/`),
-    // runHttpTest('http test10', iterations, 'http://server1.test.com/test/abc', `Test succeeded. Port 9001. URL:/test/abc`),
-    // runHttpTest('http test11', iterations, 'http://server2.test.com/test/abc', `Test succeeded. Port 9002. URL:/test/abc`),
-    // runHttpTest('http test12', iterations, 'http://server3.test.com/test/abc', `Test succeeded. Port 9003. URL:/test/abc`),
-    // runHttpTest('http test13', iterations, 'http://server1.test.com/test/abc/def', `Test succeeded. Port 9001. URL:/test/abc/def`),
-    // runHttpTest('http test14', iterations, 'http://server2.test.com/test/abc/def', `Test succeeded. Port 9002. URL:/test/abc/def`),
-    // runHttpTest('http test15', iterations, 'http://server3.test.com/test/abc/def', `Test succeeded. Port 9003. URL:/test/abc/def`),
-    // runHttpTest('http test16', iterations, 'http://server1.test.com/abc/def', `Test succeeded. Port 9001. URL:/abc/def`),
-    // runHttpTest('http test17', iterations, 'http://server2.test.com/abc/def', `Test succeeded. Port 9002. URL:/abc/def`),
-    // runHttpTest('http test18', iterations, 'http://server3.test.com/abc/def', `Test succeeded. Port 9003. URL:/abc/def`),
-    // runHttpTest('http test19', iterations, 'http://server7.test.com/abc/def', `Test succeeded. Port 9003. URL:/abc/def`),
-    // runHttpTest('http test20', iterations, 'http://server1.test.com/random', randomPayload1),
-    // runHttpTest('http test21', iterations, 'http://server2.test.com/random', randomPayload2),
+    runHttpTest('http test01', iterations, 'http://server1.test.com', `Test succeeded. Port 9001. URL:/`),
+    runHttpTest('http test02', iterations, 'http://server2.test.com', `Test succeeded. Port 9002. URL:/`),
+    runHttpTest('http test03', iterations, 'http://server3.test.com', `Test succeeded. Port 9003. URL:/`),
+    runHttpTest('http test04', iterations, 'http://server1.test.com/testing', `Test succeeded. Port 9001. URL:/`),
+    runHttpTest('http test05', iterations, 'http://server2.test.com/testing', `Test succeeded. Port 9002. URL:/`),
+    runHttpTest('http test06', iterations, 'http://server3.test.com/testing', `Test succeeded. Port 9003. URL:/`),
+    runHttpTest('http test07', iterations, 'http://server1.test.com/test', `Test succeeded. Port 9001. URL:/test/`),
+    runHttpTest('http test08', iterations, 'http://server2.test.com/test', `Test succeeded. Port 9002. URL:/test/`),
+    runHttpTest('http test09', iterations, 'http://server3.test.com/test', `Test succeeded. Port 9003. URL:/test/`),
+    runHttpTest('http test10', iterations, 'http://server1.test.com/test/abc', `Test succeeded. Port 9001. URL:/test/abc`),
+    runHttpTest('http test11', iterations, 'http://server2.test.com/test/abc', `Test succeeded. Port 9002. URL:/test/abc`),
+    runHttpTest('http test12', iterations, 'http://server3.test.com/test/abc', `Test succeeded. Port 9003. URL:/test/abc`),
+    runHttpTest('http test13', iterations, 'http://server1.test.com/test/abc/def', `Test succeeded. Port 9001. URL:/test/abc/def`),
+    runHttpTest('http test14', iterations, 'http://server2.test.com/test/abc/def', `Test succeeded. Port 9002. URL:/test/abc/def`),
+    runHttpTest('http test15', iterations, 'http://server3.test.com/test/abc/def', `Test succeeded. Port 9003. URL:/test/abc/def`),
+    runHttpTest('http test16', iterations, 'http://server1.test.com/abc/def', `Test succeeded. Port 9001. URL:/abc/def`),
+    runHttpTest('http test17', iterations, 'http://server2.test.com/abc/def', `Test succeeded. Port 9002. URL:/abc/def`),
+    runHttpTest('http test18', iterations, 'http://server3.test.com/abc/def', `Test succeeded. Port 9003. URL:/abc/def`),
+    runHttpTest('http test19', iterations, 'http://server7.test.com/abc/def', `Test succeeded. Port 9003. URL:/abc/def`),
+    runHttpTest('http test20', iterations, 'http://server1.test.com/random', randomPayload1),
+    runHttpTest('http test21', iterations, 'http://server2.test.com/random', randomPayload2),
     runHttpTest('http test22', iterations, 'http://server3.test.com/random', randomPayload3),
     runHttpTest('http test23', iterations, 'http://server7.test.com/random', randomPayload3),
 

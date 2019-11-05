@@ -25,12 +25,21 @@ export const startServers = () => {
       if (message === randomPayload1) {
 
         ws.send(randomPayload2)
+
+        ws.close()
       }
       else {
 
         ws.send('WebSocket Server 1 receive error')
+        ws.close()
       }
     })
+
+    ws.on('close', () => {
+
+      ws.close()
+    })
+
   })
 
   wss2 = new WebSocket.Server({ noServer: true })
@@ -42,12 +51,21 @@ export const startServers = () => {
       if (message === randomPayload2) {
 
         ws.send(randomPayload3)
+
+        ws.close()
       }
       else {
 
         ws.send('WebSocket Server 2 receive error')
+        ws.close()
       }
     })
+
+    ws.on('close', () => {
+
+      ws.close()
+    })
+
   })
 
   wss3 = new WebSocket.Server({ noServer: true })
@@ -59,11 +77,20 @@ export const startServers = () => {
       if (message === randomPayload3) {
 
         ws.send(randomPayload1)
+
+        ws.close()
       }
       else {
 
         ws.send('WebSocket Server 3 receive error')
+        ws.close()
+
       }
+    })
+
+    ws.on('close', () => {
+
+      ws.close()
     })
   })
 
@@ -84,15 +111,15 @@ export const startServers = () => {
           req.setEncoding('utf8')
           req.on('data', (chunk) => { body += chunk })
           req.on('end', () => {
-            
+
             try {
 
               const randoms = JSON.parse(body)
-            
+
               randomPayload1 = randoms[0]
               randomPayload2 = randoms[1]
               randomPayload3 = randoms[2]
-            
+
               res.end('OK')
             }
             catch (e) {
@@ -165,7 +192,7 @@ export const stopServers = () => {
   server1 && server1.close()
   server2 && server2.close()
   server3 && server3.close()
-  
+
   wss1 && wss1.close()
   wss2 && wss2.close()
   wss3 && wss3.close()

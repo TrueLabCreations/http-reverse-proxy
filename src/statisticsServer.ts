@@ -3,10 +3,12 @@ import net from 'net'
 import fs from 'fs'
 import WebSocket from 'ws'
 import Statistics from './statistics'
+import { makeUrl, respondNotFound } from './util'
 
 export interface StatisticsServerHttpOptions {
   networkInterface?: string
   port: number
+  htmlFilename?: string
 }
 
 export interface StatisticsServerWebsocketOptions {
@@ -25,8 +27,9 @@ export default class StatisticsServer {
 
   private networkInterface: string
   private port: number
+  private htmlFilename: string
   private updateInterval: number
-  private filter: string[] = null
+  private filter: string[]
   private httpServer: http.Server
   private websocketServer: WebSocket.Server
   private stats: Statistics
@@ -36,8 +39,8 @@ export default class StatisticsServer {
     if (options) {
 
       this.setOptions(options)
-      
-      if (!options.noStart){
+
+      if (!options.noStart) {
         this.start()
       }
     }
@@ -53,17 +56,19 @@ export default class StatisticsServer {
 
       this.stats = options.stats
       this.port = 3001
+      this.htmlFilename = '../public/statisticsPage.html'
       this.updateInterval = 5000
 
       if (options.http) {
 
         this.networkInterface = options.http.networkInterface
-        this.port = options.http.port || 3001
+        this.port = options.http.port || this.port
+        this.htmlFilename = options.http.htmlFilename || this.htmlFilename
       }
 
       if (options.websocket) {
 
-        this.updateInterval = options.websocket.updateInterval || 5000
+        this.updateInterval = options.websocket.updateInterval || this.updateInterval
         this.filter = options.websocket.filter
       }
     }
@@ -80,36 +85,40 @@ export default class StatisticsServer {
   }
 
   public stop = () => {
-    this.httpServer && this.httpServer.close()
-    
-    if (this.websocketServer){
 
-      this.websocketServer.clients.forEach((client) =>{
+    this.httpServer && this.httpServer.close()
+
+    if (this.websocketServer) {
+
+      this.websocketServer.clients.forEach((client) => {
 
         client.close()
       })
 
-     this.websocketServer.close()
+      this.websocketServer.close()
     }
   }
 
   private createHttpServer = () => {
+
     this.httpServer = http.createServer()
 
-    this.httpServer.on('request', (req: http.IncomingMessage, res: http.ServerResponse) => {
-      fs.readFile('../public/statisticsPage.html', (error, data) => {
-        if (!error) {
+    this.httpServer.on('request',
+      (req: http.IncomingMessage, res: http.ServerResponse) => {
 
-          res.write(data.toString('utf8'))
-          res.end()
-        }
-        else {
+        fs.readFile(this.htmlFilename, (error, data) => {
 
-          res.write('<html><head></head><body><h1>File read error</h1></body></html>')
-          res.end()
-        }
+          if (!error) {
+
+            res.write(data.toString('utf8'))
+            res.end()
+          }
+          else {
+
+            respondNotFound(req, res)
+          }
+        })
       })
-    })
 
     this.httpServer.on('upgrade', (req: http.IncomingMessage, socket: net.Socket, head: any) => {
 
@@ -120,7 +129,7 @@ export default class StatisticsServer {
     })
 
     this.httpServer.on('listening', () => {
-      console.log(`Statistics server started on port ${this.port}`)
+      console.log(`Statistics server started ${JSON.stringify(this.httpServer.address())}`)
     })
 
     this.httpServer.listen(this.port, this.networkInterface)
@@ -162,7 +171,27 @@ export default class StatisticsServer {
 
         if (this.stats) {
 
-          ws.send(JSON.stringify(this.stats.getTable()))
+          const table = this.stats.getTable()
+
+          if (this.filter && Array.isArray(this.filter) && this.filter.length) {
+
+            const properties = Object.keys(table)
+            const result = {}
+
+            for (const property of properties) {
+
+              if (this.filter.find((filter) => property.substr(0, filter.length) === filter)) {
+
+                result[property] = table[property]
+              }
+            }
+
+            ws.send(JSON.stringify(result))
+          }
+          else {
+
+            ws.send(JSON.stringify(table))
+          }
         }
       }
 
@@ -174,17 +203,24 @@ export default class StatisticsServer {
 
         if (data && data.command) {
 
-          if (data.command === 'start') {
+          switch (data.command) {
 
-            handleOpen()
-            processUpdate()
-          }
-          else {
+            case 'start':
+              handleOpen()
+              processUpdate()
+              break
 
-            if (data.command === 'stop'){
-
+            case 'stop':
               handleClose()
-            }
+              break
+
+            case 'setInterval':
+              this.updateInterval = Number(data.interval)
+              break
+
+            case 'setFilter':
+              this.filter = data.setFilter
+              break
           }
         }
       })
