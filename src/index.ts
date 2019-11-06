@@ -1,8 +1,8 @@
 import cluster from 'cluster'
-import ReverseProxy, { HTTPReverseProxyOptions } from './httpReverseProxy'
+import ReverseProxy, { HttpReverseProxyOptions } from './httpReverseProxy'
 import simpleLogger from './simpleLogger'
-import SimpleHTTPServer from './simpleHttpServer'
-import { LetsEncryptUsingSelfSigned, LetsEncryptSelfSignedOptions } from './letsEncryptUsingSelfSigned'
+import SimpleHTTPServer from '../examples/simpleHttpServer'
+import LetsEncryptUsingSelfSigned, { LetsEncryptSelfSignedOptions } from './letsEncryptUsingSelfSigned'
 import { RouteRegistrationOptions } from './httpRouter'
 import Statistics from './statistics'
 import StatisticsServer, { StatisticsServerOptions } from './statisticsServer'
@@ -21,13 +21,13 @@ const letsEncryptServerOptions: LetsEncryptSelfSignedOptions = {
   locality: 'Roswell'
 }
 
-const httpOptions: HTTPReverseProxyOptions = {
+const httpOptions: HttpReverseProxyOptions = {
   letsEncryptOptions: letsEncryptServerOptions,
   httpsOptions: {
     port: 443,
-    certificates: {certificateStoreRoot: '../certificates'},
+    certificates: { certificateStoreRoot: '../certificates' },
   },
-  clustered: 32,
+  clustered: true,
   log: simpleLogger,
   stats: new Statistics()
 }

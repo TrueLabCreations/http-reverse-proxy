@@ -10,7 +10,7 @@ export interface LetsEncryptSelfSignedOptions extends BaseLetsEncryptOptions {
 
 const threeMonths = 90 * 24 * 60 * 60 * 1000
 
-export class LetsEncryptUsingSelfSigned extends BaseLetsEncryptClient {
+export default class LetsEncryptUsingSelfSigned extends BaseLetsEncryptClient {
   private country: string
   private state: string
   private locality: string

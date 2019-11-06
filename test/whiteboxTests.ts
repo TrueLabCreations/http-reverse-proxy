@@ -1,6 +1,6 @@
 import httpProxy from 'http-proxy'
 import { HTTPReverseProxyTest } from './httpReverseProxyTest'
-import { HTTPReverseProxyOptions } from '../src/httpReverseProxy'
+import { HttpReverseProxyOptions } from '../src/httpReverseProxy'
 import { CertificateTests } from './certificateTests'
 import { LetsEncryptUsingAcmeClientTests, LetsEncryptUsingSelfSignedTests } from './letsEncryptTests'
 import { RouterTests } from './routerTests'
@@ -12,7 +12,7 @@ import { GoDaddyDNSUpdateTests } from './goDaddyDNSUpdateTest'
 import GoDaddyDNSUpdate from '../src/goDaddyDNSUpdate'
 import { LetsEncryptSelfSignedOptions } from '../src/letsEncryptUsingSelfSigned'
 
-const httpTestOptions: HTTPReverseProxyOptions = {
+const httpTestOptions: HttpReverseProxyOptions = {
   port: 8080,
   proxyOptions: {
     xfwd: false,
@@ -24,7 +24,7 @@ const httpTestOptions: HTTPReverseProxyOptions = {
   log: null,
 }
 
-const httpsTestOptions: HTTPReverseProxyOptions = {
+const httpsTestOptions: HttpReverseProxyOptions = {
   port: 8080,
   proxyOptions: {
     xfwd: false,

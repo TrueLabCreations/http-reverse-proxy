@@ -22,9 +22,9 @@ interface ExtendedProxyOptions extends httpProxy.ServerOptions {
   ntlm?: boolean
 }
 
-export interface HTTPReverseProxyOptions {
+export interface HttpReverseProxyOptions {
   port?: number
-  host?: string  // TO DO make this an array of strings or interface options
+  host?: string  
   proxyOptions?: ExtendedProxyOptions
   httpsOptions?: HttpsServerOptions
   clustered?: boolean | number
@@ -54,7 +54,7 @@ const defaultProxyOptions: ExtendedProxyOptions = {
   secure: true,
 }
 
-const defaultHttpOptions: HTTPReverseProxyOptions = {
+const defaultHttpOptions: HttpReverseProxyOptions = {
   port: 80,
   proxyOptions: defaultProxyOptions,
   httpsOptions: null,
@@ -68,7 +68,7 @@ const defaultHttpsOptions: HttpsServerOptions = {
 
 export default class HTTPReverseProxy {
 
-  protected options: HTTPReverseProxyOptions;
+  protected options: HttpReverseProxyOptions;
   protected isMaster: boolean
   protected proxy: httpProxy
   protected server: http.Server // TO DO make this an array
@@ -81,7 +81,7 @@ export default class HTTPReverseProxy {
   protected stats: Statistics
 
   constructor(
-    options?: HTTPReverseProxyOptions,
+    options?: HttpReverseProxyOptions,
     letsEncrypt: typeof BaseLetsEncryptClient = LetsEncryptUsingAcmeClient) {
 
     this.options = options = { ...defaultHttpOptions, ...options }
@@ -209,7 +209,7 @@ export default class HTTPReverseProxy {
     }
   }
 
-  private runServer = (options: HTTPReverseProxyOptions,
+  private runServer = (options: HttpReverseProxyOptions,
     letsEncrypt: typeof BaseLetsEncryptClient) => {
 
     if (cluster.isWorker) {
@@ -388,7 +388,7 @@ export default class HTTPReverseProxy {
     return proxy
   }
 
-  protected setupHttpServer = (options: HTTPReverseProxyOptions): http.Server => {
+  protected setupHttpServer = (options: HttpReverseProxyOptions): http.Server => {
 
     const server = http.createServer()
 

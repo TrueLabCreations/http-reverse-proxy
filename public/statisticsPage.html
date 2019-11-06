@@ -78,7 +78,42 @@
           }
         });
 
-        return { workerIds: workerIds.sort(), eventTable: eventTable };
+        return {
+          workerIds: workerIds.sort((a, b) => a - b),
+          eventTable: eventTable
+        };
+      }
+
+      function buildWorkerColumns(eventEntry, priorEntry, workerIds) {
+        let total = 0;
+        let delta = 0;
+        const columns = [];
+
+        workerIds.forEach(workerId => {
+          const fields = ["<td>"];
+
+          if (eventEntry[workerId]) {
+            fields.push(eventEntry[workerId]);
+
+            total += eventEntry[workerId];
+
+            fields.push("/");
+
+            if (priorEntry && priorEntry[workerId]) {
+              fields.push(eventEntry[workerId] - priorEntry[workerId]);
+              delta += eventEntry[workerId] - priorEntry[workerId];
+            } else {
+              fields.push("0");
+            }
+          }
+          fields.push("</td>");
+
+          columns.push(fields.join(""));
+        });
+
+        columns.unshift(`<td>${total}/${delta}</td>`);
+
+        return columns.join("");
       }
 
       function startWebsocket() {
@@ -102,16 +137,24 @@
             rows = names
               .map(
                 (name, index) =>
-                  `<tr><td>${name}</td>${workerIds.map(workerId => {
-                    `<td>${eventTable[name][workerId]}/
-                      ${eventTable[name][workerId] -
-                        (priorEvents[name] && priorEvents[name][workerId] || 0)}</td>`;
-                  }).join("")}</tr>`
+                  `<tr><td>${name}</td>${buildWorkerColumns(
+                    eventTable[name],
+                    priorEvents[name],
+                    workerIds
+                  )}</tr>`
               )
               .join("");
 
             el.innerHTML =
-              "<table><thead><tr><th>Metric</th><th>Total</th><th>Delta</th></tr></thead><tbody>" +
+              `<table><thead><tr><th>Metric</th><th>Total</th>${workerIds
+                .map(
+                  workerId =>
+                    "<th>" +
+                    (workerId < 10 ? "0" + workerId.toString() : workerId) +
+                    "</th>"
+                )
+                .join("")}
+                </tr></thead><tbody>` +
               rows +
               "</tbody></table>";
             priorEvents = eventTable;

@@ -1,4 +1,4 @@
-import HTTPReverseProxy, { HTTPReverseProxyOptions } from '../src/httpReverseProxy'
+import HTTPReverseProxy, { HttpReverseProxyOptions } from '../src/httpReverseProxy'
 import Statistics from '../src/statistics'
 import StatisticsServer, { StatisticsServerOptions } from '../src/statisticsServer'
 
@@ -19,7 +19,7 @@ const statisticsOptions: StatisticsServerOptions = {
   }
 }
 
-const httpProxyOptions: HTTPReverseProxyOptions = {
+const httpProxyOptions: HttpReverseProxyOptions = {
 
   proxyOptions: {
   
