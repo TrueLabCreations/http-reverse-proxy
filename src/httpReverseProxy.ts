@@ -82,7 +82,8 @@ export default class HTTPReverseProxy {
 
   constructor(
     options?: HTTPReverseProxyOptions,
-    letsEncrypt: typeof BaseLetsEncryptClient = LetsEncryptUsingAcmeClient) {
+    letsEncrypt: typeof BaseLetsEncryptClient = LetsEncryptUsingAcmeClient
+    ) {
 
     this.options = options = { ...defaultHttpOptions, ...options }
 
