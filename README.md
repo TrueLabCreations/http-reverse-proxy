@@ -1,6 +1,6 @@
 # HTTP/HTTPS Reverse Proxy
 
-## Running a simple reverse proxy server
+## Running a simple http reverse proxy server
 
 Before we start we need a couple of entries in the hosts file:
 
@@ -24,7 +24,7 @@ const server2 = new SimpleHTTPServer(2, 8002)
 server1.start()
 server2.start()
 
-const proxy = new HTTPReverseProxy()
+const proxy = new ReverseProxy()
 
 proxy.addRoute('http://server1.test.com', 'localhost:8001')
 proxy.addRoute('http://server2.test.com', 'localhost:8002')
@@ -55,20 +55,22 @@ You are now running a reverse proxy sharing a single front end ip address (port 
 ```ts
 interface HTTPReverseProxyOptions {
   port?: number
-  networkInterface?: string
-  proxy?: ExtendedProxyOptions
-  https?: HttpsServerOptions
-  letsEncrypt?: BaseLetsEncryptOptions
+  host?: string
+  proxyOptions?: ExtendedProxyOptions
+  httpsOptions?: HttpsServerOptions
+  clustered?: boolean | number
+  letsEncryptOptions?: BaseLetsEncryptOptions
   preferForwardedHost?: boolean,
   log?: LoggerInterface
+  stats?: Statistics
 }
 ```
 
 >port: {number} The inbound port used to listen for http connections. Defaults to 80
 
->networkInterface: {network-address} The network interface to listen for http connections. Defaults to all interfaces
+>host: {network-address} The network interface to listen for http connections. Defaults to all [interfaces](https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback). This would only be used to force the system to listen on a single network. The format is a standard IPV4 or IPV6 network address. This has no relation to a host or hostname in a URL.
 
->proxy: {object} The http-proxy options. A complete list of the options can be found [here](https://github.com/http-party/node-http-proxy#options). 
+>proxyOptions: {object} The http-proxy options. A complete list of the options can be found [here](https://github.com/http-party/node-http-proxy#options). 
 Defaults to:
 
 ```ts
@@ -79,36 +81,75 @@ Defaults to:
 }
 ```
 
-#### https: {object} The https interface options. Defaults to:
+> httpsOptions: {object} The https interface options. Defaults to:
 
-```js
+```ts
 {
   port: 443,
-  certificates: '../certificates'
+  certificates: {
+    certificateStoreRoot: '../certificates'
+  }
+}
+```
+> clustered: {boolean or number} If specified the system will run a number of individual monitored proxy processes. The master process will automatically restart any worker process that dies unexpectedly. The number of worker processes will be the number of cores on the processor if this value is set to true or the number specified if it is a number. The minimum is 2 the maximum is 32 and is silently enforced.
+
+> letsEncryptOptions: {object} The Let's Encrypt server options. Defaults to:
+
+```ts
+{
+  port: 3000
 }
 ```
 
-#### letsEncrypt: {object} The Let's Encrypt server options
+> preferForwardedHost: {boolean} When true the forwarded host (if one is specified) from the http header is used as the key to the routing table, otherwise it it the host field of the request. Defaults to false. This is not normally set unless the proxy server is behind other proxies.
 
-#### preferForwardedHost: {boolean} WHen true the forwarded host is used as the key to the routing table, otherwise it it the host field of the request
+> log: {object} The logging element
 
-#### log: {object} The set of interfaces to the logging element
+> stats: {object} An instance of a statitics class
 
-### HTTPS options
+## HTTPS server options
 
-```js
+```ts
 interface HttpsServerOptions {
-  port: number
-  certificates: Certificates | string
-  interface?: string
+  port?: number
+  certificates: Certificates | CertificateOptions
+  host?: string
   keyFilename?: string
   certificateFilename?: string
   caFilename?: string
   httpsServerOptions?: https.ServerOptions
 }
 ```
-> How it works
-> 
+> port: {number} The inbound port used to listen for http connections. Defaults to 443
+
+> certificates: {object} 
+
+```ts
+{
+  certificateStoreRoot: string
+  log?: LoggerInterface
+  stats?: Statistics
+}
+```
+At a minimum this must specify the file path to the root of the certificate store. i.e.:
+
+```ts
+{
+  certificateStoreRoot: '../certificates'
+}
+``` 
+> host: {network-address} The network interface to listen for http connections. Defaults to the http [hosts](https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback). This would only be used to force the system to listen on a single network. The format is a standard IPV4 or IPV6 network address. This has no relation to a host or hostname in a URL.
+
+> keyFilename {string} optional path and file name for the default certificate private key. The default certificate is used when a https route does not specify key and certificate files or is not configured to use LetsEncrypt. This should be a [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) encoded private key file.
+
+> certificateFilename {string} optional path and file name for the default certificate file. This should be a [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) encoded certificate file.
+
+> caFilename {string} optional path and file name for the default certificate authority file. This should be a [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) encoded certificate authority file.
+
+> httpsServerOptions: {object} this is the set of options as specified by the node https create server found [here](https://nodejs.org/api/https.html#https_https_createserver_options_requestlistener).
+ 
+## How it works
+ 
 The server listens on the designated http port. This defaults to port 80.
 The server will also listen on the designated https port when it is configured with *HttpsServerOptions*. The port defaults to 443.
 Both servers will listen on all networks if a network *interface* is not specified.

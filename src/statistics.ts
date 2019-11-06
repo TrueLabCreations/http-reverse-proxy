@@ -3,8 +3,9 @@ import { ClusterMessage } from './httpReverseProxy'
 
 export interface StatisticsMessage extends ClusterMessage {
 
-  name?: string
-  count?: number
+  workerId: number
+  name: string
+  count: number
 }
 
 export type StatisticsTable = {
@@ -14,14 +15,24 @@ export type StatisticsTable = {
 
 export default class Statistics {
 
+  protected workerId: number
   protected statTable: StatisticsTable
 
   constructor() {
 
     this.statTable = {}
+
+    if (cluster.isWorker){
+
+      this.workerId = cluster.worker.id
+    }
+    else{
+
+      this.workerId = 0
+    }
   }
 
-  public updateCount = (name: string, count: number) => {
+  public updateCount = (name: string, count: number,workerId: number = this.workerId) => {
 
     if (!name) {
 
@@ -34,6 +45,7 @@ export default class Statistics {
 
         messageType: 'statistics',
         action: 'updateCount',
+        workerId: this.workerId,
         name: name,
         count: count
 
@@ -41,15 +53,15 @@ export default class Statistics {
     }
     else {
 
-      const entry = this.statTable[name]
+      const entry = this.statTable[`${workerId}:${name}`]
 
       if (!entry) {
 
-        this.statTable[name] = count
+        this.statTable[`${workerId}:${name}`] = count
       }
       else {
 
-        this.statTable[name] += count
+        this.statTable[`${workerId}:${name}`] += count
       }
     }
   }
@@ -59,11 +71,11 @@ export default class Statistics {
     return { ...this.statTable }
   }
 
-  public getCount = (name: string): number => {
+  public getCount = (name: string, workerId:number = this.workerId): number => {
 
-    if (name && this.statTable[name]) {
+    if (name && this.statTable[`${workerId}:${name}`]) {
 
-      return this.statTable[name]
+      return this.statTable[`${workerId}:${name}`]
     }
 
     return 0
@@ -77,11 +89,11 @@ export default class Statistics {
     }
   }
 
-  public clearCount = (name: string) => {
+  public clearCount = (name: string, workerId:number = this.workerId) => {
 
-    if (name && this.statTable[name]) {
+    if (name && this.statTable[`${workerId}:${name}`]) {
 
-      this.statTable[name] = 0
+      this.statTable[`${workerId}:${name}`] = 0
     }
   }
 
@@ -93,7 +105,7 @@ export default class Statistics {
 
         if (cluster.isMaster) {
 
-          this.updateCount(message.name, message.count)
+          this.updateCount(message.name, message.count, message.workerId)
         }
 
         break

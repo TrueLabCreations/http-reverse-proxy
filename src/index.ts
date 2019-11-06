@@ -1,5 +1,5 @@
 import cluster from 'cluster'
-import HTTPReverseProxy, { HTTPReverseProxyOptions } from './httpReverseProxy'
+import ReverseProxy, { HTTPReverseProxyOptions } from './httpReverseProxy'
 import simpleLogger from './simpleLogger'
 import SimpleHTTPServer from './simpleHttpServer'
 import { LetsEncryptUsingSelfSigned, LetsEncryptSelfSignedOptions } from './letsEncryptUsingSelfSigned'
@@ -27,12 +27,12 @@ const httpOptions: HTTPReverseProxyOptions = {
     port: 443,
     certificates: {certificateStoreRoot: '../certificates'},
   },
-  clustered: true,
+  clustered: 32,
   log: simpleLogger,
   stats: new Statistics()
 }
 
-const forwardingOptions: RouteRegistrationOptions = {
+const routingOptions: RouteRegistrationOptions = {
   https: {
     redirectToHttps: true,
     letsEncrypt: {
@@ -69,11 +69,11 @@ if (cluster.isMaster) {
   statisticsServer.start()
 }
 
-const proxy = new HTTPReverseProxy(httpOptions, LetsEncryptUsingSelfSigned)
+const proxy = new ReverseProxy(httpOptions, LetsEncryptUsingSelfSigned)
 
 proxy.addRoute('http://server9.test.com', 'localhost:3001')
 
-proxy.addRoute('https://server1.test.com/testing', 'localhost:8001', forwardingOptions)
+proxy.addRoute('https://server1.test.com/testing', 'localhost:8001', routingOptions)
 //, {
 // https: {
 //   redirect: false,
@@ -82,7 +82,7 @@ proxy.addRoute('https://server1.test.com/testing', 'localhost:8001', forwardingO
 // }
 // })
 
-proxy.addRoute('http://server2.test.com/tested', 'localhost:8002/Extended')//, forwardingOptions)
+proxy.addRoute('https://server2.test.com/tested', 'localhost:8002/Extended')//, forwardingOptions)
 // , {
 // https: {
 //   redirect: false,

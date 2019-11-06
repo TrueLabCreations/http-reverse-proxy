@@ -11,7 +11,7 @@ import LetsEncryptUsingAcmeClient, { LetsEncryptClientOptions } from './letsEncr
 import HTTPRouter, { ExtendedIncomingMessage, RouteRegistrationOptions, HTTPRouterOptions } from './httpRouter'
 import { LoggerInterface } from './simpleLogger'
 import { ProxyUrl, makeUrl, respondNotFound } from './util'
-import Statistics from './statistics'
+import Statistics, { StatisticsMessage } from './statistics'
 
 export interface ClusterMessage {
   messageType: string
@@ -24,7 +24,7 @@ interface ExtendedProxyOptions extends httpProxy.ServerOptions {
 
 export interface HTTPReverseProxyOptions {
   port?: number
-  networkInterface?: string  // TO DO make this an array of strings or interface options
+  host?: string  // TO DO make this an array of strings or interface options
   proxyOptions?: ExtendedProxyOptions
   httpsOptions?: HttpsServerOptions
   clustered?: boolean | number
@@ -35,9 +35,9 @@ export interface HTTPReverseProxyOptions {
 }
 
 export interface HttpsServerOptions {
-  port: number
+  port?: number
   certificates: Certificates | CertificateOptions
-  networkInterface?: string  // TO DO make this an array of strings or interface options
+  host?: string  // TO DO make this an array of strings or interface options
   keyFilename?: string
   certificateFilename?: string
   caFilename?: string
@@ -133,7 +133,7 @@ export default class HTTPReverseProxy {
 
         if (this.stats) {
 
-          this.stats.processMessage(message)
+          this.stats.processMessage(message as StatisticsMessage)
         }
 
         break
@@ -145,6 +145,8 @@ export default class HTTPReverseProxy {
 
           cluster.workers[workerId].send(message)
         }
+
+        break
 
       default:
 
@@ -207,131 +209,105 @@ export default class HTTPReverseProxy {
     }
   }
 
-  private runServer = (options: HTTPReverseProxyOptions, 
+  private runServer = (options: HTTPReverseProxyOptions,
     letsEncrypt: typeof BaseLetsEncryptClient) => {
 
-  if (cluster.isWorker) {
+    if (cluster.isWorker) {
 
-    process.on('disconnect', () => {
+      process.on('disconnect', () => {
 
-      this.close()
-    })
+        this.close()
+      })
 
-    process.on('message', this.handleServerMessage)
-  }
+      process.on('message', this.handleServerMessage)
+    }
 
-  this.routers = {}
+    this.routers = {}
 
-  this.proxy = this.createProxyServer({ ...defaultProxyOptions, ...options.proxyOptions })
-  this.server = this.setupHttpServer(options)
+    this.proxy = this.createProxyServer({ ...defaultProxyOptions, ...options.proxyOptions })
+    this.server = this.setupHttpServer(options)
 
-  if (options.httpsOptions) {
+    if (options.httpsOptions) {
 
-    this.httpsOptions = { ...defaultHttpsOptions, ...options.httpsOptions }
+      this.httpsOptions = { ...defaultHttpsOptions, ...options.httpsOptions }
 
-    this.certificates =
-      this.httpsOptions.certificates instanceof Certificates
-        ? this.httpsOptions.certificates
-        : new Certificates({...this.httpsOptions.certificates, log: this.log, stats: this.stats})
+      this.certificates =
+        this.httpsOptions.certificates instanceof Certificates
+          ? this.httpsOptions.certificates
+          : new Certificates({ log: this.log, stats: this.stats, ...this.httpsOptions.certificates })
 
+      this.httpsOptions.host = this.httpsOptions.host || options.host
 
-    this.httpsOptions.networkInterface = this.httpsOptions.networkInterface || options.networkInterface
-    this.httpsServer = this.setupHttpsServer(this.httpsOptions)
+      this.httpsServer = this.setupHttpsServer(this.httpsOptions)
 
-    if (options.letsEncryptOptions) {
+      if (options.letsEncryptOptions) {
 
-      const letsEncryptOptions: LetsEncryptClientOptions = {
+        const letsEncryptOptions: LetsEncryptClientOptions = {
 
-        // dnsChallenge: configOptions.dnsUpdate,
+          // dnsChallenge: configOptions.dnsUpdate,
 
-        certificates: this.certificates,
-        log: this.log,
-        stats: this.stats,
-        ...options.letsEncryptOptions
+          certificates: this.certificates,
+          log: this.log,
+          stats: this.stats,
+          ...options.letsEncryptOptions
+        }
+
+        this.letsEncrypt = new letsEncrypt(letsEncryptOptions)
       }
-
-      this.letsEncrypt = new letsEncrypt(letsEncryptOptions)
     }
   }
-}
 
   public addRoute = (
-  from: string | Partial<URL>,
-  to: string | ProxyUrl | (string | ProxyUrl)[],
-  registrationOptions?: RouteRegistrationOptions) => {
+    from: string | Partial<URL>,
+    to: string | ProxyUrl | (string | ProxyUrl)[],
+    registrationOptions?: RouteRegistrationOptions) => {
 
-  if (this.isMaster) {
+    if (this.isMaster) {
 
-    return this
-  }
-
-  if (!from || !to || (Array.isArray(to) && to.length === 0)) {
-
-    throw Error('Cannot add a new route with unspecified "from" or "to"')
-  }
-
-  from = makeUrl(from)
-
-  let router = this.routers[from.hostname]
-
-  if (!router) {
-
-    const options: HTTPRouterOptions = {
-
-      proxy: this.proxy,
-      log: this.log,
-      stats: this.stats,
+      /**
+       * we do not add the routes to the master. It does no routing
+       */
+      return this
     }
 
-    if (registrationOptions && registrationOptions.https) {
+    if (!from || !to || (Array.isArray(to) && to.length === 0)) {
 
-      options.certificates = this.certificates
-      options.https = registrationOptions.https
-      options.redirectPort = this.httpsOptions.port
+      throw Error('Cannot add a new route with unspecified "from" or "to"')
+    }
 
-      if (registrationOptions.https.letsEncrypt) {
+    from = makeUrl(from)
 
-        options.letsEncrypt = this.letsEncrypt
+    let router = this.routers[from.hostname]
+
+    if (!router) {
+
+      const options: HTTPRouterOptions = {
+
+        proxy: this.proxy,
+        log: this.log,
+        stats: this.stats,
       }
+
+      if (registrationOptions && registrationOptions.https) {
+
+        options.certificates = this.certificates
+        options.https = registrationOptions.https
+        options.redirectPort = this.httpsOptions.port
+
+        if (registrationOptions.https.letsEncrypt) {
+
+          options.letsEncrypt = this.letsEncrypt
+        }
+      }
+
+      router = new HTTPRouter(from.hostname, options)
+
+      this.routers[from.hostname] = router
+
+      this.stats && this.stats.updateCount('ActiveRouters', 1)
     }
 
-    router = new HTTPRouter(from.hostname, options)
-
-    this.routers[from.hostname] = router
-
-    this.stats && this.stats.updateCount('ActiveRouters', 1)
-  }
-
-  router.addRoute(from, to, registrationOptions)
-
-  if (router.noRoutes()) {
-
-    delete this.routers[from.hostname]
-    this.certificates && this.certificates.removeCertificate(from.hostname)
-
-    this.stats && this.stats.updateCount('ActiveRouters', -1)
-    this.stats && this.stats.updateCount('MalformedRoutes', 1)
-
-    throw Error('Cannot add a new route with unspecified "from" or "to"')
-  }
-
-  this.stats && this.stats.updateCount('RoutesAdded', 1)
-}
-
-  public removeRoute = (from: string | Partial<URL>, to?: string | ProxyUrl | (string | ProxyUrl)[]) => {
-
-  if (this.isMaster) {
-
-    return this
-  }
-
-  from = makeUrl(from)
-
-  const router = this.routers[from.hostname]
-
-  if (router) {
-
-    router.removeRoute(from, to)
+    router.addRoute(from, to, registrationOptions)
 
     if (router.noRoutes()) {
 
@@ -339,283 +315,303 @@ export default class HTTPReverseProxy {
       this.certificates && this.certificates.removeCertificate(from.hostname)
 
       this.stats && this.stats.updateCount('ActiveRouters', -1)
-      this.stats && this.stats.updateCount('RoutesDeleted', 1)
+      this.stats && this.stats.updateCount('MalformedRoutes', 1)
+
+      throw Error('Cannot add a new route with unspecified "from" or "to"')
     }
 
-    this.stats && this.stats.updateCount('RoutesRemoved', 1)
+    this.stats && this.stats.updateCount('RoutesAdded', 1)
   }
-}
+
+  public removeRoute = (from: string | Partial<URL>, to?: string | ProxyUrl | (string | ProxyUrl)[]) => {
+
+    if (this.isMaster) {
+
+      /**
+       * We do not add or remove routes from the master. It does not route.
+       */
+      return this
+    }
+
+    from = makeUrl(from)
+
+    const router = this.routers[from.hostname]
+
+    if (router) {
+
+      router.removeRoute(from, to)
+
+      if (router.noRoutes()) {
+
+        delete this.routers[from.hostname]
+        this.certificates && this.certificates.removeCertificate(from.hostname)
+
+        this.stats && this.stats.updateCount('ActiveRouters', -1)
+        this.stats && this.stats.updateCount('RoutersRemoved', 1)
+      }
+
+      this.stats && this.stats.updateCount('RoutesRemoved', 1)
+    }
+  }
 
   protected createProxyServer(proxyOptions: ExtendedProxyOptions): httpProxy {
 
-  const proxy = httpProxy.createProxyServer(proxyOptions)
+    const proxy = httpProxy.createProxyServer(proxyOptions)
 
-  proxy.on('proxyReq', (clientRequest: http.ClientRequest, req: http.IncomingMessage) => {
+    proxy.on('proxyReq', (clientRequest: http.ClientRequest, req: http.IncomingMessage) => {
 
-    if (req.headers.host !== null) {
+      if (req.headers.host !== null) {
 
-      clientRequest.setHeader('host', req.headers.host)
+        clientRequest.setHeader('host', req.headers.host)
+      }
+
+      this.stats && this.stats.updateCount('ProxyRequests', 1)
+    })
+
+    if (proxyOptions.ntlm) {
+
+      proxy.on('proxyReq', (request: http.ClientRequest) => {
+
+        const key = 'www-authenticate'
+        request.setHeader(key, request.getHeader(key) && (request.getHeader(key) as string).split(','))
+      })
     }
 
-    this.stats && this.stats.updateCount('ProxyRequests', 1)
-  })
+    proxy.on('error', (error, req, res, target) => {
 
-  if (proxyOptions.ntlm) {
+      respondNotFound(req, res)
 
-    proxy.on('proxyReq', (request: http.ClientRequest) => {
-
-      const key = 'www-authenticate'
-      request.setHeader(key, request.getHeader(key) && (request.getHeader(key) as string).split(','))
+      this.log && this.log.error({ error: error, target: target }, 'HTTP Proxy Error')
+      this.stats && this.stats.updateCount('HttpProxyErrors', 1)
     })
+
+    return proxy
   }
-
-  proxy.on('error', (error, req, res, target) => {
-
-    respondNotFound(req, res)
-
-    this.log && this.log.error({ error: error, target: target }, 'HTTP Proxy Error')
-    this.stats && this.stats.updateCount('HttpProxyErrors', 1)
-  })
-
-  return proxy
-}
 
   protected setupHttpServer = (options: HTTPReverseProxyOptions): http.Server => {
 
-  const server = http.createServer()
+    const server = http.createServer()
 
-  server.on('request',
+    server.on('request',
 
-    (req: ExtendedIncomingMessage, res: http.ServerResponse) => {
+      (req: ExtendedIncomingMessage, res: http.ServerResponse) => {
 
-      const hostName = this.getInboundHostname(req);
-      const router = this.routers[hostName]
+        const hostName = this.getInboundHostname(req);
+        const router = this.routers[hostName]
 
-      if (router) {
+        if (router) {
 
-        router.routeHttp(req, res)
-      }
-      else {
+          router.routeHttp(req, res)
+        }
+        else {
 
-        respondNotFound(req, res)
+          respondNotFound(req, res)
 
-        this.stats && this.stats.updateCount('HttpMissingRoutes', 1)
-      }
+          this.stats && this.stats.updateCount('HttpMissingRoutes', 1)
+        }
 
-      this.stats && this.stats.updateCount('HttpRequests', 1)
+        this.stats && this.stats.updateCount('HttpRequests', 1)
+      });
+
+    //
+    // Listen to the `upgrade` event and proxy the
+    // WebSocket requests as well.
+    //
+    server.on('upgrade', this.websocketsUpgrade)
+
+    server.on('error', function (err) {
+
+      this.log && this.log.error(err, 'Server Error')
+
+      this.stats && this.stats.updateCount('HttpErrors', 1)
     });
 
-  //
-  // Listen to the `upgrade` event and proxy the
-  // WebSocket requests as well.
-  //
-  server.on('upgrade', this.websocketsUpgrade)
+    server.on('clientError', function (error, socket) {
 
-  server.on('error', function (err) {
+      socket.end('HTTP/1.1 400 Bad Request')
 
-    this.log && this.log.error(err, 'Server Error')
+      this.log && this.log.error(error, 'HTTP Client Error')
+      this.stats && this.stats.updateCount('HttpClientErrors', 1)
+    });
 
-    this.stats && this.stats.updateCount('HttpErrors', 1)
-  });
+    server.on('listening', () => {
 
-  server.on('clientError', function (error, socket) {
+      this.log && this.log.info(server.address(), `HTTP server listening`);
+    })
 
-    socket.end('HTTP/1.1 400 Bad Request')
+    server.listen(options.port, options.host)
 
-    this.log && this.log.error(error, 'HTTP Client Error')
-    this.stats && this.stats.updateCount('HttpClientErrors', 1)
-  });
-
-  server.on('listening', () => {
-
-    this.log && this.log.info(server.address(), `HTTP server listening`);
-  })
-
-  server.listen(options.port, options.networkInterface)
-
-  return server
-}
-
-
-  // protected setupHttpsServers = (options: SSLOptions | SSLOptions[]) => {
-  //   if (!!options) {
-  //     if (Array.isArray(options)) {
-  //       options.forEach((ssl) => {
-  //         this.setupHttpsServer(this.proxy, ssl)
-  //       })
-  //     }
-  //     else {
-  //       this.setupHttpsServer(this.proxy, options)
-  //     }
-  //   }
-  // }
+    return server
+  }
 
   protected setupHttpsServer = (httpsOptions: HttpsServerOptions): https.Server => {
 
-  const httpsServerOptions: https.ServerOptions = {
+    const httpsServerOptions: https.ServerOptions = {
 
-    SNICallback: (hostname: string, cb: (error: Error, ctx: SecureContext) => void) => {
-      if (cb) {
-        cb(null, this.certificates.getCertificate(hostname))
-      }
-      else {
-        return this.certificates.getCertificate(hostname)
-      }
-    },
+      SNICallback: (hostname: string, cb: (error: Error, ctx: SecureContext) => void) => {
+        if (cb) {
+          cb(null, this.certificates.getCertificate(hostname))
+        }
+        else {
+          return this.certificates.getCertificate(hostname)
+        }
+      },
 
-    key: this.certificates.getCertificateData(httpsOptions.keyFilename, false),
-    cert: this.certificates.getCertificateData(httpsOptions.certificateFilename, false),
-    ca: this.certificates.getCertificateData(httpsOptions.caFilename, true),
-  }
+      key: this.certificates.getCertificateData(httpsOptions.keyFilename, false),
+      cert: this.certificates.getCertificateData(httpsOptions.certificateFilename, false),
+      ca: this.certificates.getCertificateData(httpsOptions.caFilename, true),
+    }
 
-  if (httpsOptions.httpsServerOptions) {
+    if (httpsOptions.httpsServerOptions) {
 
-    Object.assign(httpsServerOptions, httpsOptions.httpsServerOptions)
-  }
+      Object.assign(httpsServerOptions, httpsOptions.httpsServerOptions)
+    }
 
-  const httpsServer: https.Server = https.createServer(httpsServerOptions)
+    const httpsServer: https.Server = https.createServer(httpsServerOptions)
 
-  httpsServer.on('request',
+    httpsServer.on('request',
 
-    (req: ExtendedIncomingMessage, res: http.ServerResponse) => {
+      (req: ExtendedIncomingMessage, res: http.ServerResponse) => {
 
-      const hostName = this.getInboundHostname(req);
-      const router = this.routers[hostName]
+        const hostName = this.getInboundHostname(req);
+        const router = this.routers[hostName]
 
-      if (router) {
+        if (router) {
 
-        router.routeHttps(req, res)
-      }
-      else {
+          router.routeHttps(req, res)
+        }
+        else {
 
-        respondNotFound(req, res)
+          respondNotFound(req, res)
 
-        this.stats && this.stats.updateCount('HttpsMissingRoutes', 1)
-      }
+          this.stats && this.stats.updateCount('HttpsMissingRoutes', 1)
+        }
 
-      this.stats && this.stats.updateCount('HttpsRequests', 1)
+        this.stats && this.stats.updateCount('HttpsRequests', 1)
+      });
+
+    //   //
+    //   // Listen to the `upgrade` event and proxy the
+    //   // WebSocket requests as well.
+    //   //
+    httpsServer.on('upgrade', this.websocketsUpgrade);
+
+    httpsServer.on('error', function (err: Error) {
+
+      this.log && this.log.error(err, 'HTTPS Server Error')
+
+      this.stats && this.stats.updateCount('HttpsErrors', 1)
     });
 
-  //   //
-  //   // Listen to the `upgrade` event and proxy the
-  //   // WebSocket requests as well.
-  //   //
-  httpsServer.on('upgrade', this.websocketsUpgrade);
+    httpsServer.on('clientError', function (error, socket) {
 
-  httpsServer.on('error', function (err: Error) {
+      socket.end('HTTP/1.1 400 Bad Request')
 
-    this.log && this.log.error(err, 'HTTPS Server Error')
+      this.log && this.log.error(error, 'HTTPS Client Error')
+      this.stats && this.stats.updateCount('HttpsClientErrors', 1)
+    });
 
-    this.stats && this.stats.updateCount('HttpsErrors', 1)
-  });
+    httpsServer.on('listening', () => {
 
-  httpsServer.on('clientError', function (error, socket) {
+      this.log && this.log.info(httpsServer.address(), `HTTPS server listening`)
+    })
 
-    socket.end('HTTP/1.1 400 Bad Request')
+    httpsServer.listen(httpsOptions.port, httpsOptions.host);
 
-    this.log && this.log.error(error, 'HTTPS Client Error')
-    this.stats && this.stats.updateCount('HttpsClientErrors', 1)
-  });
-
-  httpsServer.on('listening', () => {
-
-    this.log && this.log.info(httpsServer.address(), `HTTPS server listening`)
-  })
-
-  httpsServer.listen(httpsOptions.port, httpsOptions.networkInterface);
-
-  return httpsServer;
-}
+    return httpsServer;
+  }
 
   protected getInboundHostname = (req: http.IncomingMessage): string => {
 
-  if (this.options.preferForwardedHost === true) {
+    if (this.options.preferForwardedHost === true) {
 
-    const forwardedHost = req.headers['x-forwarded-host']
+      const forwardedHost = req.headers['x-forwarded-host']
 
-    if (Array.isArray(forwardedHost)) {
+      if (Array.isArray(forwardedHost)) {
 
-      return forwardedHost[0].split(':')[0]
+        return forwardedHost[0].split(':')[0]
+      }
+
+      if (forwardedHost)
+
+        return forwardedHost.split(':')[0];
     }
 
-    if (forwardedHost)
+    if (req.headers.host) {
 
-      return forwardedHost.split(':')[0];
+      return req.headers.host.split(':')[0];
+    }
   }
-
-  if (req.headers.host) {
-
-    return req.headers.host.split(':')[0];
-  }
-}
 
   protected websocketsUpgrade = (req: ExtendedIncomingMessage, socket: net.Socket, head: Buffer | null) => {
 
-  socket.on('error', function (err) {
+    socket.on('error', function (err) {
 
-    this.log && this.log.error(err, 'WebSockets error')
+      this.log && this.log.error(err, 'WebSockets error')
 
-    // socket.end('HTTP/1.1 400 Bad Request')
+      // socket.end('HTTP/1.1 400 Bad Request')
 
-    this.stats && this.stats.updateCount('WebsocketErrors', 1)
-  });
+      this.stats && this.stats.updateCount('WebsocketErrors', 1)
+    });
 
-  const hostname = this.getInboundHostname(req);
-  const router = this.routers[hostname]
+    const hostname = this.getInboundHostname(req);
+    const router = this.routers[hostname]
 
-  if (router) {
+    if (router) {
 
-    const target = router.getTarget(req)
-    this.log && this.log.info({ from: hostname, target: target.host }, 'upgrade to websockets')
+      const target = router.getTarget(req)
+      this.log && this.log.info({ from: hostname, target: target.host }, 'upgrade to websockets')
 
-    if (target) {
-      try {
+      if (target) {
+        try {
 
-        this.proxy.ws(req, socket, head, { target: target, secure: target.secure })
+          this.proxy.ws(req, socket, head, { target: target, secure: target.secure })
 
-        this.stats && this.stats.updateCount('WebsocketUpgradeRequests', 1)
+          this.stats && this.stats.updateCount('WebsocketUpgradeRequests', 1)
+        }
+        catch (err) {
+
+          socket.end('HTTP/1.1 400 Bad Request')
+
+          this.stats && this.stats.updateCount('WebsocketProxyErrors', 1)
+        }
       }
-      catch (err) {
+      else {
 
         socket.end('HTTP/1.1 400 Bad Request')
 
-        this.stats && this.stats.updateCount('WebsocketProxyErrors', 1)
+        this.stats && this.stats.updateCount('WebsocketUpgradeNoTarget', 1)
       }
     }
     else {
 
       socket.end('HTTP/1.1 400 Bad Request')
 
-      this.stats && this.stats.updateCount('WebsocketUpgradeNoTarget', 1)
+      this.stats && this.stats.updateCount('WebsocketUpgradeNoRoute', 1)
     }
   }
-  else {
-
-    socket.end('HTTP/1.1 400 Bad Request')
-
-    this.stats && this.stats.updateCount('WebsocketUpgradeNoRoute', 1)
-  }
-}
 
   public close = () => {
 
-  try {
-    if (this.isMaster) {
+    try {
 
-      const workerIds = Object.keys(cluster.workers)
+      if (this.isMaster) {
 
-      workerIds.forEach((id) => {
-        cluster.workers[id].disconnect()
-      })
+        const workerIds = Object.keys(cluster.workers)
+
+        workerIds.forEach((id) => {
+
+          cluster.workers[id].disconnect()
+        })
+      }
+      else {
+
+        this.server.close()
+        this.httpsServer && this.httpsServer.close()
+        this.letsEncrypt && this.letsEncrypt.close()
+      }
+    } catch (err) {
+      // Ignore for now...
     }
-    else {
-
-      this.server.close()
-      this.httpsServer && this.httpsServer.close()
-      this.letsEncrypt && this.letsEncrypt.close()
-    }
-  } catch (err) {
-    // Ignore for now...
   }
-}
 }
