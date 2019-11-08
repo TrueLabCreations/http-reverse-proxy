@@ -1,6 +1,6 @@
-import HTTPReverseProxy, { HttpReverseProxyOptions } from '../src/httpReverseProxy'
-import Statistics from '../src/statistics'
-import StatisticsServer, { StatisticsServerOptions } from '../src/statisticsServer'
+import { HttpReverseProxy, HttpReverseProxyOptions } from '../lib/httpReverseProxy'
+import { Statistics } from '../lib/statistics'
+import { StatisticsServer, StatisticsServerOptions } from '../lib/statisticsServer'
 
 const statistics = new Statistics()
 
@@ -30,12 +30,12 @@ const httpProxyOptions: HttpReverseProxyOptions = {
 }
 
 let statisticsServer: StatisticsServer = null
-let proxy: HTTPReverseProxy = null
+let proxy: HttpReverseProxy = null
 
 export const startProxy = () => {
 
   statisticsServer = new StatisticsServer(statisticsOptions)
-  proxy = new HTTPReverseProxy(httpProxyOptions)
+  proxy = new HttpReverseProxy(httpProxyOptions)
 
   proxy.addRoute('server9.test.com', 'localhost:3001')
   proxy.addRoute('server1.test.com', 'localhost:9001')

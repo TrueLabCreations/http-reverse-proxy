@@ -1,17 +1,17 @@
 import { ProxyUrl, makeUrl } from "./util"
-import { LoggerInterface } from "./simpleLogger"
+import { SimpleLogger } from "../examples/simpleLogger"
 import { RouteRegistrationOptions } from "./httpRouter"
-import Statistics from "./statistics"
+import { Statistics } from "./statistics"
 
-export default class Route {
+export class Route {
 
   public path: string
   protected roundRobin: number
   public targets: ProxyUrl[]
-  protected log: LoggerInterface
+  protected log: SimpleLogger
   protected stats: Statistics
 
-  constructor(path: string, log?: LoggerInterface, stats?: Statistics) {
+  constructor(path: string, log?: SimpleLogger, stats?: Statistics) {
 
     this.path = path
     this.log = log
@@ -26,6 +26,10 @@ export default class Route {
 
       return null
     }
+
+    // The first time through this will skip the first entry.
+    // Doing it this way assures that the round robin index has not walked
+    // off of the array of targets due to a target being removed
 
     return this.targets[this.roundRobin = (this.roundRobin + 1) % this.targets.length];
   }

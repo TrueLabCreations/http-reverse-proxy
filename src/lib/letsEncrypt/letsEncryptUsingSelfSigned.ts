@@ -1,5 +1,5 @@
 import forge from 'node-forge'
-import BaseLetsEncryptClient, { BaseLetsEncryptOptions } from './letsEncrypt'
+import { BaseLetsEncryptClient, BaseLetsEncryptOptions } from './letsEncrypt'
 
 export interface LetsEncryptSelfSignedOptions extends BaseLetsEncryptOptions {
   country: string
@@ -10,7 +10,7 @@ export interface LetsEncryptSelfSignedOptions extends BaseLetsEncryptOptions {
 
 const threeMonths = 90 * 24 * 60 * 60 * 1000
 
-export default class LetsEncryptUsingSelfSigned extends BaseLetsEncryptClient {
+export class LetsEncryptUsingSelfSigned extends BaseLetsEncryptClient {
   private country: string
   private state: string
   private locality: string
@@ -112,8 +112,8 @@ export default class LetsEncryptUsingSelfSigned extends BaseLetsEncryptClient {
     this.stats && this.stats.updateCount('SelfSignedCertificatesRequested', 1)
     this.log && this.log.info(pem, 'Certificate created.')
 
-    this.certificates.saveCertificateToStore(host, pem.privateKey, pem.certificate )
-    this.certificates.propogateNewCredential(host, pem.privateKey, pem.certificate )
+    this.certificates.saveCertificateToStore(host, pem.privateKey, pem.certificate)
+    this.certificates.propogateNewCredential(host, pem.privateKey, pem.certificate)
 
     return true
   }

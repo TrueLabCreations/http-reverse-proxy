@@ -1,6 +1,6 @@
 import axios from 'axios'
-import { LoggerInterface } from '../src/simpleLogger'
-import  AbstractDNSUpdate, { AbstractDNSUpdateOptions } from './dnsUpdate'
+import { SimpleLogger } from '../../examples/simpleLogger'
+import  { BaseDNSUpdate, BaseDNSUpdateOptions } from './dnsUpdate'
 
 interface DNSEntry {
   type: string
@@ -11,15 +11,15 @@ interface DNSEntry {
 
 const goDaddyAPIRoot = 'https://api.godaddy.com/v1'
 
-export interface GoDaddyDNSUpdateOptions extends AbstractDNSUpdateOptions {
+export interface GoDaddyDNSUpdateOptions extends BaseDNSUpdateOptions {
   APIKey: string
   secret: string
 }
 
-export default class GoDaddyDNSUpdate extends AbstractDNSUpdate{
+export class GoDaddyDNSUpdate extends BaseDNSUpdate{
   private apiKey: string
   private secret: string
-  protected log: LoggerInterface
+  protected log: SimpleLogger
 
   constructor(options: GoDaddyDNSUpdateOptions) {
     super(options)

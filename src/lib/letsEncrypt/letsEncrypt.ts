@@ -1,22 +1,22 @@
 import http from 'http'
 import cluster from 'cluster'
-import Certificates, { CertificateInformation } from "./certificates";
-import AbstractDNSUpdate from "./dnsUpdate";
-import { LoggerInterface } from "./simpleLogger";
-import { ClusterMessage } from './httpReverseProxy';
-import Statistics from './statistics';
+import { Certificates, CertificateInformation } from "../certificates";
+import { BaseDNSUpdate } from "../dns/dnsUpdate";
+import { SimpleLogger } from "../../examples/simpleLogger";
+import { ClusterMessage } from '../httpReverseProxy';
+import { Statistics } from '../statistics';
 
 export interface BaseLetsEncryptOptions {
   networkInterface?: string
   port?: number
   certificates?: Certificates
-  dnsChallenge?: AbstractDNSUpdate
+  dnsChallenge?: BaseDNSUpdate
   dnsNameServer?: string
-  log?: LoggerInterface
+  log?: SimpleLogger
   stats?: Statistics
 }
 
-interface HTTPChallengeTable {
+interface HttpChallengeTable {
   [hostAndToken: string]: string
 }
 
@@ -29,16 +29,16 @@ export interface LetsEncryptMessage extends ClusterMessage {
 
 const oneMonth = 30 * 24 * 60 * 60 * 1000
 
-export default class BaseLetsEncryptClient {
+export class BaseLetsEncryptClient {
   protected certificates: Certificates
   protected networkInterface: string
   protected port: number
   protected httpServer: http.Server
-  protected dnsChallenge: AbstractDNSUpdate
+  protected dnsChallenge: BaseDNSUpdate
   protected dnsNameServer: string
-  protected log: LoggerInterface
+  protected log: SimpleLogger
   protected stats: Statistics
-  protected outstandingChallenges: HTTPChallengeTable
+  protected outstandingChallenges: HttpChallengeTable
 
 
   constructor(options: BaseLetsEncryptOptions) {
@@ -123,7 +123,7 @@ export default class BaseLetsEncryptClient {
       this.stats && this.stats.updateCount('LetsEncryptServersRunning', 1)
 
       this.log && this.log.info(serverAddress,
-        `LetsEncrypt server listening to HTTP requests`);
+        `LetsEncrypt server listening to Http requests`);
     })
 
     server.listen(this.port, this.networkInterface)
@@ -172,7 +172,7 @@ export default class BaseLetsEncryptClient {
       if (this.certificates.getCertificate(host)) {
 
         this.stats && this.stats.updateCount('LetsEncryptCertificatesRemotelyResolved', 1)
-        
+
         return true
       }
     }
@@ -243,15 +243,15 @@ export default class BaseLetsEncryptClient {
         case 'addChallenge':
 
           this.stats && this.stats.updateCount('LetsEncryptHttpChallengesAdded', 1)
-          
+
           this.outstandingChallenges[this.makeKey(message.host, message.token)] = message.keyAuthorization
           break
 
         case 'removeChallenge':
 
-            this.stats && this.stats.updateCount('LetsEncryptHttpChallengesRemoved', 1)
+          this.stats && this.stats.updateCount('LetsEncryptHttpChallengesRemoved', 1)
 
-            delete this.outstandingChallenges[this.makeKey(message.host, message.token)]
+          delete this.outstandingChallenges[this.makeKey(message.host, message.token)]
           break
 
         default:

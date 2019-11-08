@@ -5,13 +5,13 @@ import net from 'net'
 import cluster from 'cluster'
 import os from 'os'
 import { SecureContext } from 'tls'
-import Certificates, { CertificateOptions, CertificateMessage } from './certificates'
-import BaseLetsEncryptClient, { BaseLetsEncryptOptions, LetsEncryptMessage } from './letsEncrypt'
-import LetsEncryptUsingAcmeClient, { LetsEncryptClientOptions } from './letsEncryptUsingAcmeClient'
-import HTTPRouter, { ExtendedIncomingMessage, RouteRegistrationOptions, HTTPRouterOptions } from './httpRouter'
-import { LoggerInterface } from './simpleLogger'
+import { Certificates, CertificateOptions, CertificateMessage } from './certificates'
+import { BaseLetsEncryptClient, BaseLetsEncryptOptions, LetsEncryptMessage } from './letsEncrypt/letsEncrypt'
+import { LetsEncryptUsingAcmeClient, LetsEncryptClientOptions } from './letsEncrypt/letsEncryptUsingAcmeClient'
+import { HttpRouter, ExtendedIncomingMessage, RouteRegistrationOptions, HttpRouterOptions } from './httpRouter'
+import { SimpleLogger } from '../examples/simpleLogger'
 import { ProxyUrl, makeUrl, respondNotFound } from './util'
-import Statistics, { StatisticsMessage } from './statistics'
+import { Statistics, StatisticsMessage } from './statistics'
 
 export interface ClusterMessage {
   messageType: string
@@ -24,13 +24,13 @@ interface ExtendedProxyOptions extends httpProxy.ServerOptions {
 
 export interface HttpReverseProxyOptions {
   port?: number
-  host?: string  
+  host?: string
   proxyOptions?: ExtendedProxyOptions
   httpsOptions?: HttpsServerOptions
   clustered?: boolean | number
   letsEncryptOptions?: BaseLetsEncryptOptions
-  preferForwardedHost?: boolean,
-  log?: LoggerInterface
+  preferForwardedHost?: boolean
+  log?: SimpleLogger | null
   stats?: Statistics
 }
 
@@ -44,8 +44,8 @@ export interface HttpsServerOptions {
   httpsServerOptions?: https.ServerOptions
 }
 
-type HTTPRouters = {
-  [host: string]: HTTPRouter
+type HttpRouters = {
+  [host: string]: HttpRouter
 }
 
 const defaultProxyOptions: ExtendedProxyOptions = {
@@ -66,7 +66,7 @@ const defaultHttpsOptions: HttpsServerOptions = {
   certificates: { certificateStoreRoot: '../certificates' }
 }
 
-export default class HTTPReverseProxy {
+export class HttpReverseProxy {
 
   protected options: HttpReverseProxyOptions;
   protected isMaster: boolean
@@ -76,8 +76,8 @@ export default class HTTPReverseProxy {
   protected httpsServer: https.Server // TO DO make this an array
   protected certificates: Certificates
   protected letsEncrypt: BaseLetsEncryptClient
-  protected routers: HTTPRouters
-  protected log: LoggerInterface
+  protected routers: HttpRouters
+  protected log: SimpleLogger
   protected stats: Statistics
 
   constructor(
@@ -260,7 +260,9 @@ export default class HTTPReverseProxy {
   public addRoute = (
     from: string | Partial<URL>,
     to: string | ProxyUrl | (string | ProxyUrl)[],
-    registrationOptions?: RouteRegistrationOptions) => {
+    registrationOptions?: RouteRegistrationOptions
+
+  ): HttpReverseProxy => {
 
     if (this.isMaster) {
 
@@ -281,7 +283,7 @@ export default class HTTPReverseProxy {
 
     if (!router) {
 
-      const options: HTTPRouterOptions = {
+      const options: HttpRouterOptions = {
 
         proxy: this.proxy,
         log: this.log,
@@ -300,7 +302,7 @@ export default class HTTPReverseProxy {
         }
       }
 
-      router = new HTTPRouter(from.hostname, options)
+      router = new HttpRouter(from.hostname, options)
 
       this.routers[from.hostname] = router
 
@@ -321,9 +323,15 @@ export default class HTTPReverseProxy {
     }
 
     this.stats && this.stats.updateCount('RoutesAdded', 1)
+
+    return this
   }
 
-  public removeRoute = (from: string | Partial<URL>, to?: string | ProxyUrl | (string | ProxyUrl)[]) => {
+  public removeRoute = (
+    from: string | Partial<URL>,
+    to?: string | ProxyUrl | (string | ProxyUrl)[]
+
+  ): HttpReverseProxy => {
 
     if (this.isMaster) {
 
@@ -352,6 +360,8 @@ export default class HTTPReverseProxy {
 
       this.stats && this.stats.updateCount('RoutesRemoved', 1)
     }
+
+    return this
   }
 
   protected createProxyServer(proxyOptions: ExtendedProxyOptions): httpProxy {
@@ -381,7 +391,7 @@ export default class HTTPReverseProxy {
 
       respondNotFound(req, res)
 
-      this.log && this.log.error({ error: error, target: target }, 'HTTP Proxy Error')
+      this.log && this.log.error({ error: error, target: target }, 'Http Proxy Error')
       this.stats && this.stats.updateCount('HttpProxyErrors', 1)
     })
 
@@ -419,24 +429,24 @@ export default class HTTPReverseProxy {
     //
     server.on('upgrade', this.websocketsUpgrade)
 
-    server.on('error', function (err) {
+    server.on('error', (err) => {
 
       this.log && this.log.error(err, 'Server Error')
 
       this.stats && this.stats.updateCount('HttpErrors', 1)
     });
 
-    server.on('clientError', function (error, socket) {
+    server.on('clientError', (error, socket) => {
 
       socket.end('HTTP/1.1 400 Bad Request')
 
-      this.log && this.log.error(error, 'HTTP Client Error')
+      this.log && this.log.error(error, 'Http Client Error')
       this.stats && this.stats.updateCount('HttpClientErrors', 1)
     });
 
     server.on('listening', () => {
 
-      this.log && this.log.info(server.address(), `HTTP server listening`);
+      this.log && this.log.info(server.address(), `Http server listening`);
     })
 
     server.listen(options.port, options.host)
@@ -496,24 +506,24 @@ export default class HTTPReverseProxy {
     //   //
     httpsServer.on('upgrade', this.websocketsUpgrade);
 
-    httpsServer.on('error', function (err: Error) {
+    httpsServer.on('error', (err: Error) => {
 
-      this.log && this.log.error(err, 'HTTPS Server Error')
+      this.log && this.log.error(err, 'Https Server Error')
 
       this.stats && this.stats.updateCount('HttpsErrors', 1)
     });
 
-    httpsServer.on('clientError', function (error, socket) {
+    httpsServer.on('clientError', (error, socket) => {
 
       socket.end('HTTP/1.1 400 Bad Request')
 
-      this.log && this.log.error(error, 'HTTPS Client Error')
+      this.log && this.log.error(error, 'Https Client Error')
       this.stats && this.stats.updateCount('HttpsClientErrors', 1)
     });
 
     httpsServer.on('listening', () => {
 
-      this.log && this.log.info(httpsServer.address(), `HTTPS server listening`)
+      this.log && this.log.info(httpsServer.address(), `Https server listening`)
     })
 
     httpsServer.listen(httpsOptions.port, httpsOptions.host);
@@ -545,7 +555,7 @@ export default class HTTPReverseProxy {
 
   protected websocketsUpgrade = (req: ExtendedIncomingMessage, socket: net.Socket, head: Buffer | null) => {
 
-    socket.on('error', function (err) {
+    socket.on('error', (err) => {
 
       this.log && this.log.error(err, 'WebSockets error')
 

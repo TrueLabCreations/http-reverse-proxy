@@ -1,96 +1,17 @@
-import cluster from 'cluster'
-import ReverseProxy, { HttpReverseProxyOptions } from './httpReverseProxy'
-import simpleLogger from './simpleLogger'
-import SimpleHTTPServer from '../examples/simpleHttpServer'
-import LetsEncryptUsingSelfSigned, { LetsEncryptSelfSignedOptions } from './letsEncryptUsingSelfSigned'
-import { RouteRegistrationOptions } from './httpRouter'
-import Statistics from './statistics'
-import StatisticsServer, { StatisticsServerOptions } from './statisticsServer'
+import { HttpReverseProxy } from "./lib/httpReverseProxy"
+import { Certificates } from "./lib/certificates"
+import { LetsEncryptUsingAcmeClient } from "./lib/letsEncrypt/letsEncryptUsingAcmeClient"
+import { LetsEncryptUsingSelfSigned } from "./lib/letsEncrypt/letsEncryptUsingSelfSigned"
+import { Statistics } from "./lib/statistics"
+import { SimpleHttpServer } from "./examples/simpleHttpServer"
+import { SimpleLogger } from "./examples/simpleLogger"
 
-
-/**
- * TODO:
- * add a runtime configuration website
- * make LetsEncrypt a loadable server and add specific route for .well-known/acme-challenge for each secure host
- */
-
-const letsEncryptServerOptions: LetsEncryptSelfSignedOptions = {
-  organizationName: 'Self testing',
-  country: 'US',
-  state: 'Georgia',
-  locality: 'Roswell'
-}
-
-const httpOptions: HttpReverseProxyOptions = {
-  letsEncryptOptions: letsEncryptServerOptions,
-  httpsOptions: {
-    port: 443,
-    certificates: { certificateStoreRoot: '../certificates' },
-  },
-  clustered: true,
-  log: simpleLogger,
-  stats: new Statistics()
-}
-
-const routingOptions: RouteRegistrationOptions = {
-  https: {
-    redirectToHttps: true,
-    letsEncrypt: {
-      email: 'tom@swiedler.com',
-      production: false,
-    }
-  }
-}
-
-let server1: SimpleHTTPServer
-let server2: SimpleHTTPServer
-
-const statisticsOptions: StatisticsServerOptions = {
-
-  noStart: true,
-  stats: httpOptions.stats,
-
-  http: {
-    port: 3001
-  },
-
-  // websocket:{},
-}
-
-if (cluster.isMaster) {
-
-  server1 = new SimpleHTTPServer(1, 8001)
-  server2 = new SimpleHTTPServer(2, 8002)
-
-  const statisticsServer = new StatisticsServer(statisticsOptions)
-
-  server1.start()
-  server2.start()
-  statisticsServer.start()
-}
-
-const proxy = new ReverseProxy(httpOptions, LetsEncryptUsingSelfSigned)
-
-proxy.addRoute('http://server9.test.com', 'localhost:3001')
-
-proxy.addRoute('https://server1.test.com/testing', 'localhost:8001', routingOptions)
-//, {
-// https: {
-//   redirect: false,
-//   keyPath: 'c:\\dev\\http-reverse-proxy\\testCertificates\\server1-key.pem',
-//   certificatePath: 'c:\\dev\\http-reverse-proxy\\testCertificates\\server1-crt.pem'
-// }
-// })
-
-proxy.addRoute('https://server2.test.com/tested', 'localhost:8002/Extended')//, forwardingOptions)
-// , {
-// https: {
-//   redirect: false,
-//   keyPath: 'c:\\dev\\http-reverse-proxy\\testCertificates\\server1-key.pem',
-//   certificatePath: 'c:\\dev\\http-reverse-proxy\\testCertificates\\server1-crt.pem'
-// }
-// })
-
-proxy.addRoute('http://server3.test.com', 'localhost:8003')//, forwardingOptions)
-
-console.log('HTTP Reverse Proxy server started')
+module.exports = {
+  HttpReverseProxy,
+  Statistics,
+  Certificates,
+  LetsEncryptUsingSelfSigned,
+  LetsEncryptUsingAcmeClient,
+  SimpleHttpServer,
+  SimpleLogger
+};

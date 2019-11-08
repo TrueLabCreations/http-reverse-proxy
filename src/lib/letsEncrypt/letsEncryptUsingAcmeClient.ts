@@ -5,7 +5,7 @@
 import dns from 'dns'
 import acmeClient, { Http01Challenge, Challenge } from 'acme-client'
 import { CsrOptions } from 'acme-client/crypto/forge'
-import BaseLetsEncryptClient, { BaseLetsEncryptOptions } from './letsEncrypt'
+import { BaseLetsEncryptClient, BaseLetsEncryptOptions } from './letsEncrypt'
 
 /**
  * @interface LetsEncryptServerOptions
@@ -24,7 +24,7 @@ export interface LetsEncryptClientOptions extends BaseLetsEncryptOptions {
 //   [hostAndToken: string]: string
 // }
 
-export default class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
+export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
 
   protected noVerify: boolean
 
@@ -231,7 +231,7 @@ export default class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
       default:
 
         this.stats && this.stats.updateCount('AcmeUnhandledChallenges', 1)
-        
+
         return false
     }
   }

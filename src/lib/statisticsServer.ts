@@ -2,7 +2,7 @@ import http from 'http'
 import net from 'net'
 import fs from 'fs'
 import WebSocket from 'ws'
-import Statistics from './statistics'
+import { Statistics } from './statistics'
 import { makeUrl, respondNotFound } from './util'
 
 export interface StatisticsServerHttpOptions {
@@ -23,7 +23,7 @@ export interface StatisticsServerOptions {
   websocket?: StatisticsServerWebsocketOptions
 }
 
-export default class StatisticsServer {
+export class StatisticsServer {
 
   private networkInterface: string
   private port: number

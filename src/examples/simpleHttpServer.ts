@@ -1,6 +1,6 @@
 import http from 'http'
 
-export default class SimpleHTTPServer {
+export class SimpleHttpServer {
 
   private serverNumber: number
   private port: number
@@ -18,7 +18,7 @@ export default class SimpleHTTPServer {
   
       console.log(`Processing request for server ${this.serverNumber}`)
   
-      res.write(`<html><head></head><body><h1>Hello from server ${this.serverNumber}</h1><h2>${req.url}</h2><h2>${req.headers.host}</h2></body></html>`)
+      res.write(`<html><head></head><body><h1>Hello from server ${this.serverNumber}</h1><h2>Host: ${req.headers.host}</h2><h2>Url: ${req.url}</h2></body></html>`)
       res.end()
     })
       .listen(this.port, () => {

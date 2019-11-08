@@ -1,15 +1,15 @@
 import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import 'mocha'
-import HttpRouter, { HTTPRouterOptions } from '../src/httpRouter'
-import { makeUrl } from '../src/util'
-import Route from '../src/route'
+import { HttpRouter, HttpRouterOptions } from '../lib/httpRouter'
+import { makeUrl } from '../lib/util'
+import { Route } from '../lib/route'
 
 chai.use(chaiAsPromised)
 
 export class RouterTests extends HttpRouter {
 
-  constructor(hostname: string, options: HTTPRouterOptions) {
+  constructor(hostname: string, options: HttpRouterOptions) {
 
     super(hostname, options)
   }
@@ -75,11 +75,13 @@ export class RouterTests extends HttpRouter {
 
         route.addTargets(['target1', 'target2', 'target3', 'target4'], {})
 
-        expect(route.nextTarget().hostname).to.be.equal('target1')
+        // The round robin code skips the first target the first time to protect againt targets being removed
+
         expect(route.nextTarget().hostname).to.be.equal('target2')
         expect(route.nextTarget().hostname).to.be.equal('target3')
         expect(route.nextTarget().hostname).to.be.equal('target4')
         expect(route.nextTarget().hostname).to.be.equal('target1')
+        expect(route.nextTarget().hostname).to.be.equal('target2')
       })
     })
   }

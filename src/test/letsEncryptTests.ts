@@ -1,9 +1,9 @@
 import http from 'http'
-import LetsEncryptUsingAcmeClient, { LetsEncryptClientOptions } from '../src/letsEncryptUsingAcmeClient'
+import { LetsEncryptUsingAcmeClient, LetsEncryptClientOptions } from '../lib/letsEncrypt/letsEncryptUsingAcmeClient'
 import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import 'mocha'
-import LetsEncryptUsingSelfSigned, {LetsEncryptSelfSignedOptions } from '../src/letsEncryptUsingSelfSigned'
+import { LetsEncryptUsingSelfSigned, LetsEncryptSelfSignedOptions } from '../lib/letsEncrypt/letsEncryptUsingSelfSigned'
 
 chai.use(chaiAsPromised)
 

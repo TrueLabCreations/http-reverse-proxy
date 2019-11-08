@@ -13,7 +13,7 @@ export type StatisticsTable = {
   [name: string]: number
 }
 
-export default class Statistics {
+export class Statistics {
 
   protected workerId: number
   protected statTable: StatisticsTable

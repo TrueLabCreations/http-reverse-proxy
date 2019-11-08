@@ -26,7 +26,7 @@ export interface Config {
   sites: SiteConfiguration[]
 }
 
-const config: Config = {
+export const config: Config = {
 
   // Server port.
   httpPort: process.env.HTTP_PORT,
@@ -54,4 +54,3 @@ const config: Config = {
   ]
 }
 
-export default config

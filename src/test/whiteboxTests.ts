@@ -1,16 +1,16 @@
 import httpProxy from 'http-proxy'
-import { HTTPReverseProxyTest } from './httpReverseProxyTest'
-import { HttpReverseProxyOptions } from '../src/httpReverseProxy'
+import { HttpReverseProxyTest } from './httpReverseProxyTest'
+import { HttpReverseProxyOptions } from '../lib/httpReverseProxy'
 import { CertificateTests } from './certificateTests'
 import { LetsEncryptUsingAcmeClientTests, LetsEncryptUsingSelfSignedTests } from './letsEncryptTests'
 import { RouterTests } from './routerTests'
-import { LetsEncryptClientOptions } from '../src/letsEncryptUsingAcmeClient'
-import Certificates from '../src/certificates'
-import SimpleLogger from '../src/simpleLogger'
-import { HTTPRouterOptions, RegistrationHttpsOptions } from '../src/httpRouter'
+import { LetsEncryptClientOptions } from '../lib/letsEncrypt/letsEncryptUsingAcmeClient'
+import {Certificates} from '../lib/certificates'
+import { SimpleLogger } from '../examples/simpleLogger'
+import { HttpRouterOptions, RegistrationHttpsOptions } from '../lib/httpRouter'
 import { GoDaddyDNSUpdateTests } from './goDaddyDNSUpdateTest'
-import GoDaddyDNSUpdate from '../src/goDaddyDNSUpdate'
-import { LetsEncryptSelfSignedOptions } from '../src/letsEncryptUsingSelfSigned'
+import { GoDaddyDNSUpdate } from '../lib/dns/goDaddyDNSUpdate'
+import { LetsEncryptSelfSignedOptions } from '../lib/letsEncrypt/letsEncryptUsingSelfSigned'
 
 const httpTestOptions: HttpReverseProxyOptions = {
   port: 8080,
@@ -69,18 +69,18 @@ const letsEncryptSelfSignedOptions: LetsEncryptSelfSignedOptions = {
   state: 'Georgia',
   locality: 'Roswell',
   certificates: new Certificates({certificateStoreRoot: '..\\certificates'}),
-  log: SimpleLogger,
+  log: new SimpleLogger(),
 }
 
 const letsEncryptServerOptions: LetsEncryptClientOptions = {
   port: 80,
   certificates: new Certificates({certificateStoreRoot: '..\\certificates'}),
-  log: SimpleLogger,
+  log: new SimpleLogger(),
   dnsChallenge: new GoDaddyDNSUpdate({APIKey: goDaddyAPIKey, secret: goDaddySecret}),
   noVerify:true,
 }
 
-const httpRouterOptions: HTTPRouterOptions = {
+const httpRouterOptions: HttpRouterOptions = {
   // certificates: new Certificates({certificateStoreRoot: '..\\certificates'}),
   proxy: new httpProxy({
     xfwd: false,
@@ -114,17 +114,17 @@ const runTests = () => {
     // letsEncryptAcmeClientTests.runLetsEncryptCheckServerTest()
     // letsEncryptAcmeClientTests.runLetsEncryptGetCertificateTest(true)
 
-    let routerTests: RouterTests
-    routerTests = new RouterTests('server1.test.com', httpRouterOptions)
-    routerTests.runRouteTest ()
-    routerTests.runRegistrationTests()
+    // let routerTests: RouterTests
+    // routerTests = new RouterTests('server1.test.com', httpRouterOptions)
+    // routerTests.runRouteTest ()
+    // routerTests.runRegistrationTests()
 
-    // let httpTest: HTTPReverseProxyTest
-    // httpTest = new HTTPReverseProxyTest(httpTestOptions)
-    // httpTest.runHttpProxyTests()
+    let httpTest: HttpReverseProxyTest
+    httpTest = new HttpReverseProxyTest(httpTestOptions)
+    httpTest.runHttpProxyTests()
 
-    // let httpsTest: HTTPReverseProxyTest
-    // httpsTest = new HTTPReverseProxyTest(httpsTestOptions)
+    // let httpsTest: HttpReverseProxyTest
+    // httpsTest = new HttpReverseProxyTest(httpsTestOptions)
     // // httpsTest.runHttpsProxyTests(httpsRouterOptions)
     // httpsTest.runHttpsProxyWithCertificatesTests('testing.swiedler.com', httpsRouterWithCertificateOptions)
 

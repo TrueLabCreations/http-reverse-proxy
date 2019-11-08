@@ -1,16 +1,15 @@
 import http from 'http'
 import https from 'https'
-import HTTPReverseProxy, { HttpReverseProxyOptions } from '../src/httpReverseProxy'
-import { RegistrationHttpsOptions, ExtendedIncomingMessage } from '../src/httpRouter'
+import { HttpReverseProxy, HttpReverseProxyOptions } from '../lib/httpReverseProxy'
+import { RegistrationHttpsOptions, ExtendedIncomingMessage } from '../lib/httpRouter'
 import chai, { expect } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import 'mocha'
-import { makeUrl } from '../src/util'
+import { makeUrl } from '../lib/util'
 
 chai.use(chaiAsPromised)
 
-
-export class HTTPReverseProxyTest extends HTTPReverseProxy {
+export class HttpReverseProxyTest extends HttpReverseProxy {
 
   constructor(options: HttpReverseProxyOptions) {
     super(options)
@@ -38,7 +37,7 @@ export class HTTPReverseProxyTest extends HTTPReverseProxy {
 
     describe('Test routing to local Http servers', () => {
 
-      it('should add a route', () =>{
+      it('should add a route', () => {
 
         this.addRoute('test.local.com', 'http://localhost:9001')
         const router = this.routers['test.local.com']
@@ -63,6 +62,7 @@ export class HTTPReverseProxyTest extends HTTPReverseProxy {
           })
         })
         expect(promise).to.eventually.be.equal('Test succeeded. Port 9001. URL:/').notify(done)
+
       })
 
       it('should route to server 2', (done) => {
@@ -219,11 +219,11 @@ export class HTTPReverseProxyTest extends HTTPReverseProxy {
         expect(this.routers['test.local4.com'].getTarget(req).path).to.be.equal('/')
         req.url = '/test'
         expect(this.routers['test.local5.com'].getTarget(req)).to.be.null
-        req.url='/abcs'
+        req.url = '/abcs'
         expect(this.routers['test.local5.com'].getTarget(req)).to.be.null
         req.url = '/abc/123'
         expect(this.routers['test.local4.com'].getTarget(req).path).to.be.equal('/')
-        expect (req.url).to.be.equal('/123')
+        expect(req.url).to.be.equal('/123')
         req.url = '/abc/123/test'
         expect(this.routers['test.local4.com'].getTarget(req).href).to.be.equal('http://server3.remote.com/')
         expect(req.url).to.be.equal('/123/test')
@@ -241,7 +241,7 @@ export class HTTPReverseProxyTest extends HTTPReverseProxy {
           this.addRoute(makeUrl(path), routes[index])
         })
 
-        const req = {url:'def/123'} as ExtendedIncomingMessage
+        const req = { url: 'def/123' } as ExtendedIncomingMessage
 
         expect(this.routers['test.local4.com'].getTarget(req).path).to.be.equal('/')
         req.url = '/test/123/456'
@@ -397,8 +397,8 @@ export class HTTPReverseProxyTest extends HTTPReverseProxy {
       it('should route to server 1', (done) => {
         const promise = new Promise((resolve, reject) => {
           http.get('http://localhost:8080', { headers: { host: hostName } }, (res) => {
-            if (res.statusCode === 302){
-              https.get(res.headers.location, { headers: { host: hostName } }, (res) =>{
+            if (res.statusCode === 302) {
+              https.get(res.headers.location, { headers: { host: hostName } }, (res) => {
                 let body = ''
                 res.setEncoding('utf8')
                 res.on('data', (chunk) => { body += chunk })

@@ -1,7 +1,7 @@
-import ReverseProxy, { HttpReverseProxyOptions } from '../src/httpReverseProxy'
-import SimpleHTTPServer from './simpleHttpServer'
-import LetsEncrypt, { LetsEncryptSelfSignedOptions } from '../src/letsEncryptUsingSelfSigned'
-import { RouteRegistrationOptions } from '../src/httpRouter'
+import { HttpReverseProxy, HttpReverseProxyOptions } from '../lib/httpReverseProxy'
+import { SimpleHttpServer } from './simpleHttpServer'
+import { LetsEncryptUsingSelfSigned, LetsEncryptSelfSignedOptions } from '../lib/letsEncrypt/letsEncryptUsingSelfSigned'
+import { RouteRegistrationOptions } from '../lib/httpRouter'
 
 
 const letsEncryptServerOptions: LetsEncryptSelfSignedOptions = {
@@ -41,16 +41,16 @@ const routingOptions: RouteRegistrationOptions = {
   }
 }
 
-const server1 = new SimpleHTTPServer(1, 8001)
-const server2 = new SimpleHTTPServer(2, 8002)
+const server1 = new SimpleHttpServer(1, 8001)
+const server2 = new SimpleHttpServer(2, 8002)
 
 server1.start()
 server2.start()
 
-const proxy = new ReverseProxy(httpOptions, LetsEncrypt)
+const proxy = new HttpReverseProxy(httpOptions, LetsEncryptUsingSelfSigned)
 
 proxy.addRoute('https://server1.test.com', 'localhost:8001', routingOptions)
 
 proxy.addRoute('https://server2.test.com', 'localhost:8002', routingOptions)
 
-console.log('HTTPS Reverse Proxy server started')
+console.log('Https Reverse Proxy server started')

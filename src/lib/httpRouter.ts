@@ -1,12 +1,12 @@
 import http from 'http'
 import httpProxy from 'http-proxy'
 import path from 'path'
-import Certificates from './certificates';
-import { LoggerInterface } from './simpleLogger'
-import LetsEncryptClient from './letsEncrypt';
+import { Certificates } from './certificates';
+import { SimpleLogger } from '../examples/simpleLogger'
+import { BaseLetsEncryptClient } from './letsEncrypt/letsEncrypt';
 import { ProxyUrl, makeUrl, startsWith, respondNotFound } from './util';
-import Route from './route'
-import Statistics from './statistics';
+import { Route } from './route'
+import { Statistics } from './statistics';
 
 export interface RegistrationLetsEncryptOptions {
   email: string
@@ -35,13 +35,13 @@ export interface ExtendedIncomingMessage extends http.IncomingMessage {
   originalUrl: string
 }
 
-export interface HTTPRouterOptions {
+export interface HttpRouterOptions {
   proxy: httpProxy
   certificates?: Certificates
   https?: RegistrationHttpsOptions
   redirectPort?: number
-  letsEncrypt?: LetsEncryptClient,
-  log?: LoggerInterface
+  letsEncrypt?: BaseLetsEncryptClient,
+  log?: SimpleLogger
   stats?: Statistics
 }
 
@@ -53,18 +53,18 @@ const defaultRegistrationOptions: RouteRegistrationOptions = {
 const ONE_DAY = 60 * 60 * 24 * 1000;
 const ONE_MONTH = ONE_DAY * 30;
 
-export default class HTTPRouter {
+export class HttpRouter {
   protected hostname: string
   protected proxy: httpProxy
   protected certificates: Certificates
   protected https: RegistrationHttpsOptions
-  protected letsEncrypt: LetsEncryptClient
-  protected log: LoggerInterface
+  protected letsEncrypt: BaseLetsEncryptClient
+  protected log: SimpleLogger
   protected stats: Statistics
   protected redirectPort: number
   protected routes: Route[]
 
-  constructor(hostname: string, options: HTTPRouterOptions) {
+  constructor(hostname: string, options: HttpRouterOptions) {
     this.hostname = hostname
     this.certificates = options.certificates
     this.proxy = options.proxy
