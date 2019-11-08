@@ -6,7 +6,7 @@ import { Statistics } from './statistics'
 import { makeUrl, respondNotFound } from './util'
 
 export interface StatisticsServerHttpOptions {
-  networkInterface?: string
+  host?: string
   port: number
   htmlFilename?: string
 }
@@ -25,7 +25,7 @@ export interface StatisticsServerOptions {
 
 export class StatisticsServer {
 
-  private networkInterface: string
+  private host: string
   private port: number
   private htmlFilename: string
   private updateInterval: number
@@ -56,12 +56,12 @@ export class StatisticsServer {
 
       this.stats = options.stats
       this.port = 3001
-      this.htmlFilename = '../public/statisticsPage.html'
+      this.htmlFilename = './public/statisticsPage.html'
       this.updateInterval = 5000
 
       if (options.http) {
 
-        this.networkInterface = options.http.networkInterface
+        this.host = options.http.host
         this.port = options.http.port || this.port
         this.htmlFilename = options.http.htmlFilename || this.htmlFilename
       }
@@ -132,7 +132,7 @@ export class StatisticsServer {
       console.log(`Statistics server started ${JSON.stringify(this.httpServer.address())}`)
     })
 
-    this.httpServer.listen(this.port, this.networkInterface)
+    this.httpServer.listen(this.port, this.host)
   }
 
   private createWebsocketServer = () => {
@@ -180,7 +180,7 @@ export class StatisticsServer {
 
             for (const property of properties) {
 
-              if (this.filter.find((filter) => property.substr(0, filter.length) === filter)) {
+              if (this.filter.find((filter) => property.substr(property.indexOf(':') + 1, filter.length) === filter)) {
 
                 result[property] = table[property]
               }

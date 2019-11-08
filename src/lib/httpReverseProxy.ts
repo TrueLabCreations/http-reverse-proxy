@@ -417,6 +417,8 @@ export class HttpReverseProxy {
 
           respondNotFound(req, res)
 
+          this.log && this.log.warn ({url: req.url}, "Missing route")
+
           this.stats && this.stats.updateCount('HttpMissingRoutes', 1)
         }
 

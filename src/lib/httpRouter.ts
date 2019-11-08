@@ -291,7 +291,7 @@ export class HttpRouter {
             this.hostname,
             options.letsEncrypt.production,
             options.letsEncrypt.email,
-            options.letsEncrypt.renewWithin || ONE_MONTH,
+            options.letsEncrypt.renewWithin * ONE_DAY || ONE_MONTH,
             options.letsEncrypt.forceRenew);
         }
       }

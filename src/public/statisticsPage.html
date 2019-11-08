@@ -60,7 +60,7 @@
         const workerIds = [];
 
         Object.keys(events).forEach(property => {
-          const workerId = property.match(/^\d+/)[0];
+          const workerId = Number(property.match(/^\d+/)[0]);
           const name = property
             .replace(/^\d+:/, "")
             .replace(/[A-Z]/g, c => ` ${c}`)
@@ -103,7 +103,7 @@
               fields.push(eventEntry[workerId] - priorEntry[workerId]);
               delta += eventEntry[workerId] - priorEntry[workerId];
             } else {
-              fields.push("0");
+              fields.push(eventEntry[workerId]);
             }
           }
           fields.push("</td>");
@@ -150,7 +150,7 @@
                 .map(
                   workerId =>
                     "<th>" +
-                    (workerId < 10 ? "0" + workerId.toString() : workerId) +
+                    (workerId === 0 ? 'Master' : workerId < 10 ? "0" + workerId.toString() : workerId) +
                     "</th>"
                 )
                 .join("")}

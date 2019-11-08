@@ -7,8 +7,8 @@ import { ClusterMessage } from '../httpReverseProxy';
 import { Statistics } from '../statistics';
 
 export interface BaseLetsEncryptOptions {
-  networkInterface?: string
   port?: number
+  host?: string
   certificates?: Certificates
   dnsChallenge?: BaseDNSUpdate
   dnsNameServer?: string
@@ -43,7 +43,7 @@ export class BaseLetsEncryptClient {
 
   constructor(options: BaseLetsEncryptOptions) {
     this.certificates = options.certificates
-    this.networkInterface = options.networkInterface
+    this.networkInterface = options.host
     this.port = options.port || 3000
     this.httpServer = this.setupLetsEncryptServer()
     this.dnsChallenge = options.dnsChallenge
