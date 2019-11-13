@@ -20,9 +20,10 @@
     "proxy",
     "reverse",
     "http",
-    "typescript"
+    "typescript",
+    "letsEncrypt"
   ],
-  "author": "Tom Swiedler",
+  "author": "True Lab Creations/Tom Swiedler",
   "dependencies": {
     "acme-client": "^3.2.0",
     "colors": "^1.4.0",
@@ -32,18 +33,11 @@
   },
   "devDependencies": {
     "@types/acme-client": "^3.0.0",
-    "@types/chai": "^4.2.3",
-    "@types/chai-as-promised": "^7.1.2",
-    "@types/dotenv": "^6.1.1",
     "@types/http-proxy": "^1.17.0",
-    "@types/mocha": "^5.2.7",
     "@types/node": "^12.7.12",
     "@types/node-forge": "^0.8.6",
     "@types/ws": "^6.0.3",
-    "chai": "^4.2.0",
-    "chai-as-promised": "^7.1.1",
     "gulpclass": "^0.2.0",
-    "mocha": "^2.5.3",
     "prettier": "^1.18.2",
     "ts-node": "^8.4.1",
     "tslint": "^5.20.1",
