@@ -110,7 +110,7 @@ export class LetsEncryptUsingSelfSigned extends BaseLetsEncryptClient {
     }
 
     this.stats && this.stats.updateCount('SelfSignedCertificatesRequested', 1)
-    this.log && this.log.info(pem, 'Certificate created.')
+    this.log && this.log.info(null, 'Certificate created.')
 
     this.certificates.saveCertificateToStore(host, pem.privateKey, pem.certificate)
     this.certificates.propogateNewCredential(host, pem.privateKey, pem.certificate)

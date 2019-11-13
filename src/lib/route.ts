@@ -79,7 +79,6 @@ export class Route {
     if (targets) {
 
       if (!Array.isArray(targets)) {
-
         targets = [targets]
       }
 

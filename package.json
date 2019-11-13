@@ -1,13 +1,16 @@
 {
-  "name": "http-reverse-proxy",
-  "version": "0.0.1",
-  "license": "UNLICENSED",
-  "description": "A reverse proxy implementation",
-  "main": "dist/index",
-  "typings": "dist/index",
+  "name": "http-reverse-proxy-ts",
+  "version": "1.0.0",
+  "license": "MIT",
+  "description": "An Http reverse proxy implementation in Typescript",
+  "main": "dist",
+  "typings": "dist",
   "scripts": {
-    "test": "mocha test/* --reporter spec",
-    "watch": "tsc --watch"
+    "test": "node ./dist/test/blackboxTests.js all 100 10",
+    "build": "tsc",
+    "start": "npm run build && node ./dist/src/examples/simpleHttpProxy.js",
+    "httpsExample": "npm run build && node ./dist/src/examples/simpleHttpsProxy.js",
+    "letsEncryptExample": "npm run build && node ./dist/src/examples/letsEncryptHostTestProxy.js"
   },
   "repository": {
     "type": "git",
@@ -15,16 +18,16 @@
   },
   "keywords": [
     "proxy",
-    "reverse"
+    "reverse",
+    "http",
+    "typescript"
   ],
   "author": "Tom Swiedler",
   "dependencies": {
     "acme-client": "^3.2.0",
     "colors": "^1.4.0",
-    "dotenv": "^8.1.0",
     "http-proxy": "^1.18.0",
     "node-forge": "^0.9.1",
-    "valid-url": "^1.0.9",
     "ws": "^7.2.0"
   },
   "devDependencies": {
@@ -43,7 +46,7 @@
     "mocha": "^2.5.3",
     "prettier": "^1.18.2",
     "ts-node": "^8.4.1",
-    "tslint": "^5.20.0",
+    "tslint": "^5.20.1",
     "tslint-config-prettier": "^1.18.0",
     "tslint-plugin-prettier": "^2.0.1",
     "typescript": "^3.7.2"

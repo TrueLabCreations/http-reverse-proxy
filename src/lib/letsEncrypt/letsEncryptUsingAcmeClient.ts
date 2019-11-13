@@ -20,10 +20,6 @@ export interface LetsEncryptClientOptions extends BaseLetsEncryptOptions {
   noVerify?: boolean
 }
 
-// interface ChallengeTable {
-//   [hostAndToken: string]: string
-// }
-
 export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
 
   protected noVerify: boolean

@@ -66,7 +66,7 @@ export class BaseLetsEncryptClient {
   }
 
   public get href() {
-    return `http://${this.networkInterface}:${this.port}/.well-known/acme-challenge`
+    return `http://${this.networkInterface || 'localhost'}:${this.port}/.well-known/acme-challenge`
   }
 
   public get serverInterface() {
@@ -81,38 +81,41 @@ export class BaseLetsEncryptClient {
 
     const server = http.createServer()
 
-    server.on('connection', (req: http.IncomingMessage, res: http.ServerResponse) => {
+    server.on('request', (req: http.IncomingMessage, res: http.ServerResponse) => {
 
       this.log && this.log.info(null, `LetsEncypt validate url: ${req.url}`)
 
       const validPath = /^\/.well-known\/acme-challenge\//.test(req.url)
 
-      /**
-       * trim white space, 
-       * strip trailing /, 
-       * split into array on /, 
-       * take last item, 
-       * remove invalid identifier characters 
-       */
+      if (validPath) {
 
-      const token = req.url.trim().replace(/$\//, '').split('/').pop().replace(/\W-/g, '')
+        /**
+         * trim white space, 
+         * strip trailing /, 
+         * split into array on /, 
+         * take last item, 
+         * remove invalid identifier characters 
+         */
 
-      this.log && this.log.info({ token: token }, `LetsEncrypt validating challenge`)
+        const token = req.url.trim().replace(/$\//, '').split('/').pop().replace(/\W-/g, '')
+
+        this.log && this.log.info({ token: token }, `LetsEncrypt validating challenge`)
+
+        if (token && this.outstandingChallenges[`${req.headers.host}_${token}`]) {
+
+          // send the key corresponding to the token from the outstanding challenges
+
+          res.writeHead(200);
+          res.end(this.outstandingChallenges[`${req.headers.host}_${token}`])
+
+          return
+        }
+      }
 
       // respond with error if missing challenge path, token, or token is not in in outstanding challenges
 
-      if (!validPath || !token || !this.outstandingChallenges[`${req.headers.host}_${token}`]) {
-
-        res.writeHead(404, { "Content-Type": "text/plain" })
-        res.end("404 Token Not Found\n")
-
-        return
-      }
-
-      // send the key corresponding to the token from the outstanding challenges
-
-      res.writeHead(200);
-      res.end(this.outstandingChallenges[`${req.headers.host}_${token}`])
+      res.writeHead(404, { "Content-Type": "text/plain" })
+      res.end("404 Not Found\n")
     })
 
     server.on('listening', () => {

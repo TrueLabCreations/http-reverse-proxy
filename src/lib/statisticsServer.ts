@@ -8,7 +8,6 @@ import { makeUrl, respondNotFound } from './util'
 export interface StatisticsServerHttpOptions {
   host?: string
   port: number
-  htmlFilename?: string
 }
 
 export interface StatisticsServerWebsocketOptions {
@@ -19,6 +18,7 @@ export interface StatisticsServerWebsocketOptions {
 export interface StatisticsServerOptions {
   stats: Statistics
   noStart?: boolean
+  htmlFilename?: string
   http?: StatisticsServerHttpOptions
   websocket?: StatisticsServerWebsocketOptions
 }
@@ -56,14 +56,14 @@ export class StatisticsServer {
 
       this.stats = options.stats
       this.port = 3001
-      this.htmlFilename = './public/statisticsPage.html'
+      this.htmlFilename = '../../public/statisticsPage.html'
       this.updateInterval = 5000
+      this.htmlFilename = options.htmlFilename || this.htmlFilename
 
       if (options.http) {
 
         this.host = options.http.host
         this.port = options.http.port || this.port
-        this.htmlFilename = options.http.htmlFilename || this.htmlFilename
       }
 
       if (options.websocket) {
@@ -129,7 +129,7 @@ export class StatisticsServer {
     })
 
     this.httpServer.on('listening', () => {
-      console.log(`Statistics server started ${JSON.stringify(this.httpServer.address())}`)
+      console.log(`info: ${JSON.stringify(this.httpServer.address())} Statistics server started`)
     })
 
     this.httpServer.listen(this.port, this.host)

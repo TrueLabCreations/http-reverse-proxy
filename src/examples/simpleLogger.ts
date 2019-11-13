@@ -28,10 +28,10 @@ export class SimpleLogger {
   }
 
   public error(data: {} | null, message: string) {
-    log('debug', colors.red, data, message)
+    log('error', colors.red, data, message)
   }
 
   public fatal(data: {} | null, message: string) {
-    log('debug', colors.bgRed, data, message)
+    log('fatal', colors.bgRed, data, message)
   }
 }

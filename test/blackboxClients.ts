@@ -1,4 +1,5 @@
 import http from 'http'
+import https from 'https'
 import WebSocket from 'ws'
 
 let randomPayload1: string
@@ -9,7 +10,45 @@ const httpClient = async (hostname: string, expected: string) => {
 
   return new Promise((resolve, reject) => {
 
-    http.get(hostname, { agent: false }, (res) => {
+    http.get(hostname, { agent: false }, async (res) => {
+
+      if (res.statusCode === 200) {
+
+        let body = ''
+
+        res.setEncoding('utf8')
+        res.on('data', (chunk) => { body += chunk })
+        res.on('end', () => {
+
+          if (body === expected) {
+            resolve()
+          }
+          else {
+
+            reject(body.substr(0, 40))
+          }
+        })
+      }
+      else {
+
+        if (res.statusCode === 302 || res.statusCode === 301) {
+
+          await httpsClient(res.headers.location, expected)
+            .then(resolve)
+            .catch(reject)
+        }
+
+        reject(res.statusMessage)
+      }
+    })
+  })
+}
+
+const httpsClient = async (hostname: string, expected: string) => {
+
+  return new Promise((resolve, reject) => {
+
+    https.get(hostname, { rejectUnauthorized: false }, (res) => {
 
       if (res.statusCode === 200) {
 
@@ -35,6 +74,17 @@ const httpClient = async (hostname: string, expected: string) => {
     })
   })
 }
+
+// const httpClientWithRedirect = async (hostname: string, expected: string ) =>{
+
+//   try{
+//     await httpClient(hostname, expected)
+//   }
+//   catch(e){
+//     await httpClient(hostname, expected)
+//   }
+
+// }
 
 const wsClient = async (hostname: string, send: string, receive: string) => {
 
@@ -185,7 +235,7 @@ export const runHttpTests = async (iterations: number) => {
     runHttpTest('http test20', iterations, 'http://server1.test.com/random', randomPayload1),
     runHttpTest('http test21', iterations, 'http://server2.test.com/random', randomPayload2),
     runHttpTest('http test22', iterations, 'http://server3.test.com/random', randomPayload3),
-    runHttpTest('http test23', iterations, 'http://server7.test.com/random', randomPayload3),
+    runHttpTest('http test23', iterations, 'http://server6.test.com/random', randomPayload3),
 
   ])
 
@@ -212,7 +262,7 @@ export const runWebsocketTests = async (iterations: number) => {
     runWebSocketTest('ws test02', iterations, 'http://server2.test.com', randomPayload2, randomPayload3),
     runWebSocketTest('ws test03', iterations, 'http://server3.test.com', randomPayload3, randomPayload1),
     runWebSocketTest('ws test04', iterations, 'http://server4.test.com', randomPayload3, randomPayload1),
-    runWebSocketTest('ws test05', iterations, 'http://server7.test.com', randomPayload3, randomPayload1),
+    runWebSocketTest('ws test05', iterations, 'http://server6.test.com', randomPayload3, randomPayload1),
 
   ])
 

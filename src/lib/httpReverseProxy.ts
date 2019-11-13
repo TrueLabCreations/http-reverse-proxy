@@ -417,7 +417,7 @@ export class HttpReverseProxy {
 
           respondNotFound(req, res)
 
-          this.log && this.log.warn ({url: req.url}, "Missing route")
+          this.log && this.log.warn({ url: req.url }, "Missing route")
 
           this.stats && this.stats.updateCount('HttpMissingRoutes', 1)
         }
@@ -440,7 +440,7 @@ export class HttpReverseProxy {
 
     server.on('clientError', (error, socket) => {
 
-      socket.end('HTTP/1.1 400 Bad Request')
+      // socket.end('HTTP/1.1 400 Bad Request')
 
       this.log && this.log.error(error, 'Http Client Error')
       this.stats && this.stats.updateCount('HttpClientErrors', 1)
@@ -461,11 +461,25 @@ export class HttpReverseProxy {
     const httpsServerOptions: https.ServerOptions = {
 
       SNICallback: (hostname: string, cb: (error: Error, ctx: SecureContext) => void) => {
+
+        const certificate = this.certificates.getCertificate(hostname)
+
         if (cb) {
-          cb(null, this.certificates.getCertificate(hostname))
+
+          if (certificate) {
+
+            cb(null, certificate)
+          }
+          else{
+
+            this.log && this.log.error({hostname:hostname},'Certificate not found')
+
+            cb(new Error(`Certificate not available for ${hostname}`), null)
+          }
         }
         else {
-          return this.certificates.getCertificate(hostname)
+
+          return certificate
         }
       },
 
@@ -517,7 +531,7 @@ export class HttpReverseProxy {
 
     httpsServer.on('clientError', (error, socket) => {
 
-      socket.end('HTTP/1.1 400 Bad Request')
+      // socket.end('HTTP/1.1 400 Bad Request')
 
       this.log && this.log.error(error, 'Https Client Error')
       this.stats && this.stats.updateCount('HttpsClientErrors', 1)

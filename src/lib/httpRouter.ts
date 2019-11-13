@@ -10,8 +10,8 @@ import { Statistics } from './statistics';
 
 export interface RegistrationLetsEncryptOptions {
   email: string
-  production?: boolean,
-  renewWithin?: number,
+  production?: boolean
+  renewWithin?: number
   forceRenew?: boolean
 }
 
@@ -31,7 +31,7 @@ export interface RouteRegistrationOptions {
 }
 
 export interface ExtendedIncomingMessage extends http.IncomingMessage {
-  host: string;
+  host: string
   originalUrl: string
 }
 
@@ -171,6 +171,7 @@ export class HttpRouter {
 
         //TO DO handle errors
         try {
+          // req.headers.host = target.host
           this.proxy.web(req, res, { target: target, secure: target.secure },
 
             (error: any, req: http.IncomingMessage, res: http.ServerResponse) => {
@@ -206,6 +207,8 @@ export class HttpRouter {
     if (target) {
 
       try {
+        // req.headers.host = target.host
+
         this.proxy.web(req, res, { target: target, secure: target.secure },
 
           (error: any, req: http.IncomingMessage, res: http.ServerResponse) => {
@@ -241,8 +244,11 @@ export class HttpRouter {
     req.url = req.originalUrl || req.url; // Get the original url since we are going to redirect.
 
     const targetPort = this.redirectPort;
-    //TO DO check if we should use forwarded host
-    const hostname = req.headers.host.split(':')[0] + (targetPort ? ':' + targetPort : '')
+
+    //TO DO check if we should use forwarded host - resolved via this.hostname
+    // const hostname = req.headers.host.split(':')[0] + (targetPort ? ':' + targetPort : '')
+
+    const hostname = this.hostname + (targetPort ? ':' + targetPort : '')
 
     const url = 'https://' + path.join(hostname, req.url).replace(/\\/g, '/')
 
@@ -387,6 +393,7 @@ export class HttpRouter {
 
     if (this.letsEncrypt && /^\/.well-known\/acme-challenge\//.test(url)) {
 
+      this.log && this.log.info(null, `Adding LetsEncrypt Route ${url}`)
       this.stats && this.stats.updateCount(`AcmeRequestsFor:${this.hostname}`, 1)
 
       return new Route('/').addTargets(this.letsEncrypt.href, {})

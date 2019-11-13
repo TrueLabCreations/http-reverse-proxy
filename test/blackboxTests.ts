@@ -1,6 +1,6 @@
 import { startProxy, stopProxy } from './blackboxProxy'
 import { startServers, stopServers } from './blackboxServers'
-import { runHttpTests, runWebsocketTests, sendRandoms } from './blackboxCilents'
+import { runHttpTests, runWebsocketTests, sendRandoms } from './blackboxClients'
 
 const runAll = async (httpIterations: number, websocketIterations: number, stringSize: number = 500): Promise<boolean> => {
 

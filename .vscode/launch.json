@@ -27,10 +27,10 @@
         "--timeout",
         "120000",
         "--colors",
-        "${workspaceFolder}/dist/test/whiteboxTests.js"
+        "${workspaceFolder}/test/dist/test/whiteboxTests.js"
       ],
       "internalConsoleOptions": "openOnSessionStart",
-      "cwd": "${workspaceFolder}/dist"
+      "cwd": "${workspaceFolder}/test/dist/test"
     },
     {
       "type": "node",
@@ -54,11 +54,14 @@
         {
           "NODE_ENV":"development"
         },
-      "program": "${workspaceFolder}/test/blackboxLocalTests.ts",
+      "program": "${workspaceFolder}/test/blackboxTests.ts",
+      "args":[
+        "all",
+        "1"
+      ],
       "outFiles": [
         "${workspaceFolder}/dist/test/*.js"
       ],
-      "cwd": "${workspaceFolder}/dist"
     },
     {
       "type": "node",
