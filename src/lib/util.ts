@@ -53,4 +53,77 @@ export const respondNotFound = (req: http.IncomingMessage, res: http.ServerRespo
   res.statusCode = 404
   res.write('HTTP/1.1 404 Not Found');
   res.end()
-};
+}
+
+const ONE_DAY = 24 * 60 * 60 * 1000
+
+/**
+ * The timeout in node is only good for about 24 days.
+ * 
+ * Certificates routinely expire over the span of months.
+ * 
+ * The long timeout fires internally once a day until the last
+ * day and then fires the external callback when the time has finally
+ * expired
+ */
+
+export class LongTimeout {
+
+  private expiration: number
+  private timer: NodeJS.Timeout
+  private callbackArgs: any[]
+  private callback: (...args: any[]) => void
+
+  constructor(callback: (...args: any[]) => void, expiration: number | Date, ...callbackArgs: any[]) {
+
+    this.expiration = (expiration instanceof Date)
+      ? expiration.valueOf()
+      : Date.now() + expiration
+
+    this.callbackArgs = callbackArgs
+    this.callback = callback
+
+    this.setTimer()
+  }
+
+  private timerFired = () => {
+
+    this.clearTimer()
+
+    if (this.expiration <= Date.now()) {
+
+      this.callback(...this.callbackArgs)
+    }
+    else {
+
+      this.setTimer()
+    }
+  }
+
+  private setTimer = () => {
+
+    this.clearTimer()
+
+    const interval = this.expiration - Date.now()
+    this.timer = setTimeout(this.timerFired, interval >= ONE_DAY ? ONE_DAY : interval)
+  }
+
+  clearTimer = () => {
+
+    if (this.timer) {
+
+      clearTimeout(this.timer)
+      this.timer = null
+    }
+  }
+}
+
+export const setLongTimeout = (callback: (...args: any[]) => void, expiration: number | Date): LongTimeout => {
+
+  return new LongTimeout(callback, expiration)
+}
+
+export const clearLongTimeout = (timeout: LongTimeout) => {
+
+  timeout && timeout.clearTimer()
+}

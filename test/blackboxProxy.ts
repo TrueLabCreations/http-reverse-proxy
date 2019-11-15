@@ -11,7 +11,7 @@ import {
   LetsEncryptUsingSelfSigned,
   SimpleLogger,
   RegistrationLetsEncryptOptions
-} from '../src/index'
+} from '../index'
 
 const statistics = new Statistics()
 

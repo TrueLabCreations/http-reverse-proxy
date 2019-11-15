@@ -4,7 +4,14 @@ import path from 'path'
 import { Certificates } from './certificates';
 import { SimpleLogger } from '../examples/simpleLogger'
 import { BaseLetsEncryptClient } from './letsEncrypt/letsEncrypt';
-import { ProxyUrl, makeUrl, startsWith, respondNotFound } from './util';
+import {
+  ProxyUrl,
+  makeUrl,
+  startsWith,
+  respondNotFound,
+  LongTimeout,
+  setLongTimeout
+} from './util';
 import { Route } from './route'
 import { Statistics } from './statistics';
 
@@ -112,7 +119,7 @@ export class HttpRouter {
   protected stats: Statistics
   protected redirectPort: number
   protected routes: Route[]
-  private certificateTimer: NodeJS.Timeout
+  private certificateTimer: LongTimeout
   protected certificateFailureCount: number
   protected letEncryptBusy: boolean;
 
@@ -462,18 +469,18 @@ export class HttpRouter {
       return
     }
 
-    let milliseconds = expiresOn ? expiresOn.valueOf() - new Date().valueOf() - renewWithin : 0
+    let expiration = expiresOn ? expiresOn.valueOf() - Date.now() - renewWithin : 0
 
     /**
-     * Sanity check
+     * If we are already overdue, wait at least a minute
      */
 
-    if (milliseconds <= 0) {
+    if (expiration <= 0) {
 
-      milliseconds = 10000
+      expiration = 60000
     }
 
-    this.certificateTimer = setTimeout(async () => {
+    this.certificateTimer = setLongTimeout(async () => {
 
       /**
        * Clear the certificate timer. It will be set by the request for a certificate
@@ -495,7 +502,7 @@ export class HttpRouter {
         this.certificateFailureCount = 0
       }
       else {
-        
+
         /**
          * Do not allow unlimited failures
          */
@@ -518,7 +525,7 @@ export class HttpRouter {
           this.setCertificateExpiration(expiresOn, ONE_MONTH - this.certificateFailureCount * ONE_DAY)
         }
       }
-    }, milliseconds)
+    }, expiration)
   }
 
   /**
@@ -594,19 +601,22 @@ export class HttpRouter {
            * See if LetsEncrypt can get us a certificate
            */
 
-          if ( !await this.letsEncrypt.getLetsEncryptCertificate(
+          if (!await this.letsEncrypt.getLetsEncryptCertificate(
             this.hostname,
             options.letsEncrypt.production,
             options.letsEncrypt.email,
-            options.letsEncrypt.forceRenew, this.setCertificateExpiration)){
+            options.letsEncrypt.forceRenew, this.setCertificateExpiration)) {
 
-              /**
-               * If we fail schedule a retry
-               */
+            /**
+             * If we fail schedule a retry in 60 seconds
+             */
 
-              this.setCertificateExpiration(null)
+            this.log && this.log.warn({ hostname: this.hostname }, 'Initial certificate request failed')
+            this.stats && this.stats.updateCount(`FailedCertificateRequestsFor: ${this.hostname}`, 1)
 
-            }
+            this.setCertificateExpiration(new Date(Date.now() + 120000), 60000)
+
+          }
 
           this.letEncryptBusy = false
         }
@@ -619,7 +629,7 @@ export class HttpRouter {
   }
 
   /**
-   * Dig through the Routes to find an appropriate target
+   * Dig through the Routes to find an appropriate Route and target
    */
 
   public getTarget = (req: ExtendedIncomingMessage): ProxyUrl => {
@@ -641,7 +651,7 @@ export class HttpRouter {
     }
 
     /**
-     * Fix up the destination path
+     * Fix up the source path
      */
 
     const pathname: string = route.path;
@@ -649,23 +659,33 @@ export class HttpRouter {
     if (pathname.length > 1) {
 
       /**
-       * remove prefix from src
+       * Save the original url for later.
+       * Remove the prefix specified in Route from the request Url
+       * Leaving just the remaining part
+        * Route.url === '/abc'
+        * req.url === '/abc/def'
+        * req.url = '/def'
       */
-       
+
       req.originalUrl = url; // save original url
       req.url = url.substr(pathname.length) || '/';
     }
 
     /**
-     * Get the nect target in the route
+     * Get the next target in the route
      */
 
     const target = route.nextTarget();
 
     /**
-     * Fix request url if target pathname specified.
+     * Fix request url if target pathname is specified.
+     * Append the remainder of the req.url to the target path
+       * Route.url === '/abc'
+       * req.url === '/abc/def'
+       * target.url === '/123'
+       * req.url = '/123/def'
      */
-    
+
     if (target.pathname) {
 
       req.url = path.join(target.pathname, req.url).replace(/\\/g, '/');
@@ -673,9 +693,11 @@ export class HttpRouter {
 
     /**
      * Host headers are passed through from the source by default
-     * Often we want to use the host header of the target instead
+     * We may want to use the host header of the target instead
+     * specifically if we have proxies behind us
+     * or servers that check the host name matches their own
      */
-     
+
     if (target.useTargetHostHeader === true) {
 
       req.headers.host = target.host;

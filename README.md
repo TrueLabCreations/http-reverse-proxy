@@ -5,7 +5,7 @@
 If you already have nodjs and vsCode installed then the package can be installed from npm via
 
 ```
-npm install --save HttpReverseProxy
+npm install --save http-reverse-proxy-ts
 ```
 
 There are more in-depth installation instructions [here](#setting-it-all-up-from-scratch).
@@ -29,17 +29,38 @@ If you are using Typescript the index.ts would contain:
 
 > TypeScript
 ```ts
-import { ReverseProxy, SimpleHttpServer} from 'httpReverseProxy'
+import { 
+  HttpReverseProxy,
+  SimpleHttpServer,
+  Statistics, 
+  StatisticsServer, 
+  StatisticsServerOptions,
+  SimpleLogger 
+  } from 'http-reverse-proxy-ts'
 
-new SimpleHTTPServer(1, 8001).start()
-new SimpleHTTPServer(2, 8002).start()
+const stats = new Statistics()
 
-const proxy = new ReverseProxy()
+const statisticsServerOptions: StatisticsServerOptions = {
+
+  stats: stats,
+  htmlFilename: './public/statisticsPage.html'
+}
+
+const statisticsServer = new StatisticsServer(statisticsServerOptions)
+const logger = new SimpleLogger()
+
+const server1 = new SimpleHttpServer(1, 8001)
+const server2 = new SimpleHttpServer(2, 8002)
+
+server1.start()
+server2.start()
+
+const proxy = new HttpReverseProxy({ stats: stats, log: logger })
 
 proxy.addRoute('http://server1.test.com', 'localhost:8001')
 proxy.addRoute('http://server2.test.com', 'localhost:8002')
 
-console.log('Proxy server started')
+logger.info(null,'Proxy server started')
 
 ```
 
@@ -47,23 +68,42 @@ If you are using Javascript the index.js would contain:
 
 > Javascript
 ```js
-const { ReverseProxy, SimpleHTTPServer } = require ('httpReverseProxy')
+const  {
+  HttpReverseProxy,
+  SimpleHttpServer,
+  Statistics,
+  StatisticsServer,
+  SimpleLogger
+ } = require ('http-reverse-proxy-ts')
 
-new SimpleHTTPServer(1, 8001).start()
-new SimpleHTTPServer(2, 8002).start()
+const stats = new Statistics()
 
-const proxy = new ReverseProxy()
+const statisticsServerOptions = {
+
+  stats: stats,
+  htmlFilename: './public/statisticsPage.html'
+}
+
+const statisticsServer = new StatisticsServer(statisticsServerOptions)
+const logger = new SimpleLogger()
+
+const server1 = new SimpleHttpServer(1, 8001)
+const server2 = new SimpleHttpServer(2, 8002)
+
+server1.start()
+server2.start()
+
+const proxy = new HttpReverseProxy({ stats: stats, log: logger })
 
 proxy.addRoute('http://server1.test.com', 'localhost:8001')
 proxy.addRoute('http://server2.test.com', 'localhost:8002')
 
-console.log('Proxy server started')
-
+logger.info(null,'Proxy server started')
 ```
 
-The SimpleHTTPServer is a small implementation of a web server; it responds with the server number, host, name and url.
+The SimpleHTTPServer is a small implementation of a web server; it responds with the server number, hostname and url.
 
-If you are using Typescript you will need to compile the project. It is recommended for this example that you set the `outdir` in the `tsconfig.json` file to `.`.
+If you are using Typescript you will need to compile the project. It is recommended for this example that you set the `outDir` in the `tsconfig.json` file to `.`.
 
 Run the project from a command prompt in the directory containing the `index.js` file:
 
@@ -78,68 +118,182 @@ This should bring up the hello message from server1.
 
 Change the address to http://server2.test.com and the second server should respond.
 
-You are now running a reverse proxy sharing a single front end ip address (port 80) and routing requests to twodiffernet applications.
+You are now running a reverse proxy sharing a single front end ip address (port 80) and routing requests to two applications.
 
 ## Running a simple secure HTTPS server
 
-Running an Https server is a bit more complex. The complexity is due to the requirement for `certficates`. Certificates verify the
-authenticity of the server (usually the domain or host name) and set the goundwork for encrypting the data passing between the 
-browser and the server. A certificate is only valid if it is backed-up by a trusted [certificate authority](https://en.wikipedia.org/wiki/Certificate_authority). There are a large number of organizations that will grant a certificate for a domain or host name. 
-Most of them charge a fee. For this example of an https server we will use a self-signed certificate. A self-signed certificate 
+Running an Https server is a bit more complex. The complexity is due to the requirement for `certficates`. 
+
+Certificates verify the
+authenticity of the server (usually the domain or host name) and set the goundwork for encrypting the data passing between the browser and the server.
+
+A certificate is only valid if it is backed-up by a trusted [certificate authority](https://en.wikipedia.org/wiki/Certificate_authority).
+
+There are a large number of organizations that will grant a certificate for a domain or host name. Most of them charge a fee. 
+
+For this example of an https server we will use a self-signed certificate. A self-signed certificate 
 is generated locally and does not have a valid certificate authority backing it up. 
+
 There is also free service that will grant certificates if you can prove you own the domain or host name. This 
-service is called `LetsEncrypt`. For this example we use a self-signed certificate.
+service is called `LetsEncrypt`. A later example shows how to set that up.
 
 
 ```ts
-import ReverseProxy, { HttpReverseProxyOptions } from '../src/httpReverseProxy'
-import SimpleHTTPServer from './simpleHttpServer'
-import LetsEncrypt, { LetsEncryptSelfSignedOptions } from '../src/letsEncryptUsingSelfSigned'
-import { RouteRegistrationOptions } from '../src/httpRouter'
+import {
+  HttpReverseProxyOptions,
+  HttpReverseProxy,
+  LetsEncryptSelfSignedOptions,
+  LetsEncryptUsingSelfSigned,
+  RouteRegistrationOptions,
+  SimpleHttpServer,
+  Statistics,
+  StatisticsServerOptions,
+  StatisticsServer,
+  SimpleLogger
+} from 'http-reverse-proxy-ts'
+
+const stats = new Statistics()
+const logger = new SimpleLogger()
+
+const statisticsServerOptions: StatisticsServerOptions = {
+
+  stats: stats,
+  htmlFilename: './public/statisticsPage.html'
+}
 
 const letsEncryptServerOptions: LetsEncryptSelfSignedOptions = {
+
   organizationName: 'Self testing',
   country: 'US',
   state: 'Georgia',
   locality: 'Roswell'
 }
 
-const httpOptions: HttpReverseProxyOptions = {
+const httpReverseProxyOptions: HttpReverseProxyOptions = {
+
   letsEncryptOptions: letsEncryptServerOptions,
+
   httpsOptions: {
+
     port: 443,
+
     certificates: {
-      certificateStoreRoot: '../certificates'
+
+      certificateStoreRoot: './certificates'
     },
   },
+
+  stats: stats,
+  log: logger,
 }
 
 const routingOptions: RouteRegistrationOptions = {
+
   https: {
+
     redirectToHttps: true,
+
     letsEncrypt: {
+
       email: 'myname@mydomain.com',
       production: false,
     }
   }
 }
 
-const server1 = new SimpleHTTPServer(1, 8001)
-const server2 = new SimpleHTTPServer(2, 8002)
+const statisticsServer = new StatisticsServer(statisticsServerOptions)
+
+const server1 = new SimpleHttpServer(1, 8001)
+const server2 = new SimpleHttpServer(2, 8002)
 
 server1.start()
 server2.start()
 
-const proxy = new ReverseProxy(httpOptions, LetsEncrypt)
+const proxy = new HttpReverseProxy(httpReverseProxyOptions, LetsEncryptUsingSelfSigned)
 
 proxy.addRoute('https://server1.test.com', 'localhost:8001', routingOptions)
 proxy.addRoute('https://server2.test.com', 'localhost:8002', routingOptions)
 
-console.log('HTTPS Reverse Proxy server started')
+logger.info(null, 'Https Reverse Proxy server started')
 
 ```
-[HttpReverseProxyOptions](#http-server-options) | [LetsEncryptSelfSignedOptions](#lets-encrypt-options) | [RouteRegistrationOptions](#route-registration-options)
+[HttpReverseProxyOptions](#http-server-options) | [LetsEncryptSelfSignedOptions](#lets-encrypt-options) | [RouteRegistrationOptions](#route-registration-options) | [StatisticsServerOptions](#statistics-server-http-options)
 
+> Javascript
+```js
+const  {
+  HttpReverseProxy,
+  LetsEncryptUsingSelfSigned,
+  SimpleHttpServer,
+  Statistics,
+  StatisticsServer,
+  SimpleLogger
+ } = require ('http-reverse-proxy-ts')
+
+const stats = new Statistics()
+const logger = new SimpleLogger()
+
+const statisticsServerOptions = {
+
+  stats: stats,
+  htmlFilename: './public/statisticsPage.html'
+}
+
+const letsEncryptServerOptions = {
+
+  organizationName: 'Self testing',
+  country: 'US',
+  state: 'AnyState',
+  locality: 'AnyTown'
+}
+
+const httpReverseProxyOptions = {
+
+  letsEncryptOptions: letsEncryptServerOptions,
+
+  httpsOptions: {
+
+    port: 443,
+
+    certificates: {
+
+      certificateStoreRoot: './certificates'
+    },
+  },
+
+  stats: stats,
+  log: logger,
+}
+
+const routingOptions = {
+
+  https: {
+
+    redirectToHttps: true,
+
+    letsEncrypt: {
+
+      email: 'myname@mydomain.com',
+      production: false,
+    }
+  }
+}
+
+const server1 = new SimpleHttpServer(1, 8001)
+const server2 = new SimpleHttpServer(2, 8002)
+
+const statisticsServer = new StatisticsServer(statisticsServerOptions)
+
+server1.start()
+server2.start()
+
+const proxy = new HttpReverseProxy(httpReverseProxyOptions, LetsEncryptUsingSelfSigned)
+
+proxy.addRoute('https://server1.test.com', 'localhost:8001', routingOptions)
+proxy.addRoute('https://server2.test.com', 'localhost:8002', routingOptions)
+
+logger.info(null, 'Https Reverse Proxy server started')
+```
 As in the http example we set up two local http servers. These servers do not use https.
 
 The reverse proxy is configured to accept http and https connections. If certificates are required (which will be 
@@ -150,7 +304,9 @@ The routes are configured to force an http connection from the browser to be red
 connection on the proxy.
 
 At startup the proxy will request the generation of the certificates for server1.test.com and server2.test.com. 
-These certificates will will give you a warning in the browser. The certificates will be stored
+These certificates will will give you a warning in the browser. 
+
+The certificates will be stored
 in the file system at the location specified by the `certificateStoreRoot`. The directory structure for the
 certificate store will be:
 
@@ -168,14 +324,13 @@ certificate store will be:
     |- server2_test_com-key.pem
 ```
 
-Compile and run the project.
+Compile and run the Typescript project or just run the Javascript version.
 
 In the browser address bar on the same machine type:
 http://server1.test.com
 
 The browser should be redirected to an https connection. This connection should display an error in the browser 
-stating that the connection is not secure. This error is due to the use of the self signed certificates which do
-not have a trusted certificate authority. Select the option to open the page anyway (this varies by prowser).
+stating that the connection is not secure.Select the option to open the page anyway (this varies by prowser).
 
 This should bring up the hello message from server1.
 
@@ -197,17 +352,16 @@ This is the class providing the primary interface to the reverse poxy server. Ot
 ## Add Route
 
 ```ts
-  addRoute = (from: string | Partial<URL>,
+  addRoute (from: string | Partial<URL>,
     to: string | ProxyUrl | (string | ProxyUrl)[],
     registrationOptions?: RouteRegistrationOptions): HttpReverseProxy
 ```
-addRoute() will add a non-duplicate route to the routing server. `from` refers to the inbound host and url (the source) and `to` refers to the outbound host and url (target). Routes are duplicate if the source hosts and urls are equivalent and the destination hosts and urls are equivalent. The [RouteRegistrationOptions](#route-registration-options) are the specifications for this particular route. Adding additional targets to a route will not override the options from the first instantiaion of the route.
+addRoute() will add a non-duplicate route to the routing server. `from` refers to the inbound host and url (the source) and `to` refers to the outbound host and url (target). Routes are duplicate if the source host and url are equivalent and the destination host and url are equivalent. The [RouteRegistrationOptions](#route-registration-options) are the specifications for this particular route. Adding additional targets to a route will not override the options from the first instantiation of the route.
 
 
 ## Remove route
 ```ts
-  public removeRoute = (
-    from: string | Partial<URL>,
+  removeRoute (from: string | Partial<URL>,
     to?: string | ProxyUrl | (string | ProxyUrl)[]): HttpReverseProxy
 ```
 removeRoute() will remove one or more routes. If no targets are specified all of the targets will be removed. When the route has no more targets,it will be removed. RemoveRoute will silently ignore requests to remove a route that does not exist.
@@ -260,9 +414,11 @@ The server does not provide any security.
 
 The Statistics container will collect the statistics as long as the proxy is running.
 
-The server will provide the current state of the statistics table through a webSocket interface. The table is sent as a single object in standard JSON format. Each key (property) of the object is a measurement point and the value of the property is the current count. The measurement point consists of the workerId (number) followed by a `:` followed by the name. The name portion may also contain additional `:` characters so splitting out the workderId should be done carefully.
+The server will provide the current state of the statistics table through a webSocket interface. The table is sent as a single object in standard JSON format. 
 
-The default web page served by the statistics server is read from `../public/statisticsPage.html`. This default page can be overridden by setting the `htmlFilename` in the [StatisticsServerOptions](#statistics-server-options).
+Each key (property) of the object is a measurement point and the value of the property is the current count. The measurement point consists of the workerId (number) followed by a `:` followed by the name. The name portion may also contain additional `:` characters so splitting out the workderId should be done carefully.
+
+The default web page served by the statistics server is read from `./public/statisticsPage.html`. This default page can be overridden by setting the `htmlFilename` in the [StatisticsServerOptions](#statistics-server-options).
 
 The default web page is a minimal implementation requiring no outside libraries. It will display the table with a single row for each statistic name and a column for each workerId. WorkerId 0 is the master. In a non-clustered configuration all statistics will be associated with the master.
 
@@ -283,6 +439,8 @@ interface HTTPReverseProxyOptions {
   stats?: Statistics
 }
 ```
+[ExtendedProxyOptions](#extended-proxy-options) | [HttpsServerOptions](#https-server-options) | [BaseLetsEncryptOptions](#lets-encrypt-options)
+
 Option | Type | Default | Description 
 --- | --- | --- | ---
 __port__ | number | `80` | The inbound port used to listen for http connections.
@@ -294,31 +452,6 @@ __letsEncryptOptions__ | object | [See below](#default-letsencrypt-options) | Th
  __preferForwardedHost__ | boolean | `false` | This is not normally set unless the proxy server is behind other proxies. When true the forwarded host (if one is specified) from the http header is used as the key to the routing table, otherwise it is the host field of the request. 
 __log__ | object | `null` | The logging element
 __stats__ | object | `null` | An instance of a statitics class
-
-## Let's Encrypt Options
-
-```ts
-interface BaseLetsEncryptOptions {
-  host?: string
-  port?: number
-  certificates?: Certificates
-  dnsChallenge?: AbstractDNSUpdate
-  dnsNameServer?: string
-  log?: SimpleLogger
-  stats?: Statistics
-}
-```
-Option | Type | Default | Description
----|---|---|---
-__host__ | string | all | The network interface to listen for http connections. Defaults to all [interfaces](https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback). This would only be used to force the system to listen on a single network. The format is a standard IPV4 or IPV6 network address. This has no relation to a host or hostname in a URL.
-__port__ | number | `3000` | The inbound port used to listen for http connections for the LetsEncrypt local server.
-__certificate__ | [Certificates](#certificates) | httpOptions.certificates | The certificate store for theLetsEncrypt managed certificates.
-__dnsChallenge__ | BaseDNSUpdate | null | For LetsEncrypt registrations that require the use of the dns-01 challenge (i.e. wildcard host names: *.test.com) this is the implementation of the DNS challenge handler for the DNS service. If the challenge handler for the DNS service you use is not provided one must be written to access the DNS and add/remove the appropriate DNS TXT record.
-__dnsNameServer__ | string | null | After writing the entry to the DNS table, the DNS challenge may verify the entry has been propagated within the cluster of name servers on the service before askting LetsEncrypt to look for it.
-__log__ | object | null | The logging element
-__stats__ | object | null | the Statistics element
-
-___
 
 ## HTTPS server options
 
@@ -337,7 +470,7 @@ Option | Type | Default | Description
 ---|---|---|---
 __port__ | number | `443` | The inbound port used to listen for https connections
 __certificates__ | object | [See Below](#certificates) | [Certificate](#certificates) object.
-__host__ | network-address | http [host](https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback) | The network interface to listen for http connections. This would only be used to force the system to listen on a single network. The format is a standard IPV4 or IPV6 network address. This has no relation to a host or hostname in a URL.
+__host__ | network-address | http [host](https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback) | The network interface to listen for https connections. This would only be used to force the system to listen on a single network. The format is a standard IPV4 or IPV6 network address. This has no relation to a host or hostname in a URL.
  __keyFilename__ | string | `null` | optional path and file name for the default certificate private key. The default certificate is used when a https route does not specify key and certificate files or is not configured to use LetsEncrypt. This should be a [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) encoded private key file.
  __certificateFilename__ | string | `null` | optional path and file name for the default certificate file. This should be a [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) encoded certificate file.
  __caFilename__ | string | `null` | optional path and file name for the default certificate authority file. This should be a [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) encoded certificate authority file.
@@ -345,6 +478,31 @@ __host__ | network-address | http [host](https://nodejs.org/api/net.html#net_ser
 
 ---
 
+## Let's Encrypt Options
+
+```ts
+interface BaseLetsEncryptOptions {
+  host?: string
+  port?: number
+  certificates?: Certificates
+  dnsChallenge?: AbstractDNSUpdate
+  dnsNameServer?: string
+  log?: SimpleLogger
+  stats?: Statistics
+}
+```
+[Certificates](#certificates) | [AbstractDNSUpdate](#dns-update) | [SimpleLogger](#simple-logger) | [Statistics](#statistics)
+Option | Type | Default | Description
+---|---|---|---
+__host__ | string | all | The network interface to listen for http connections. Defaults to all [interfaces](https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback). This would only be used to force the system to listen on a single network. The format is a standard IPV4 or IPV6 network address. This has no relation to a host or hostname in a URL.
+__port__ | number | `3000` | The inbound port used to listen for http connections for the LetsEncrypt local server.
+__certificate__ | [Certificates](#certificates) | httpOptions.certificates | The certificate store for theLetsEncrypt managed certificates.
+__dnsChallenge__ | BaseDNSUpdate | null | For LetsEncrypt registrations that require the use of the dns-01 challenge (i.e. wildcard host names: *.test.com) this is the implementation of the DNS challenge handler for the DNS service. If the challenge handler for the DNS service you use is not provided one must be written to access the DNS and add/remove the appropriate DNS TXT record.
+__dnsNameServer__ | string | null | After writing the entry to the DNS table, the DNS challenge may verify the entry has been propagated within the cluster of name servers on the service before askting LetsEncrypt to look for it.
+__log__ | object | null | The logging element
+__stats__ | object | null | the Statistics element
+
+___
 ## Route Registration Options
 
 ```ts
@@ -460,7 +618,7 @@ Option | Type | Default | Description
 ---|---|---|---
 __host__ | network-interface | [all](https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback) | The network interface. 
 __port__ | number | 3000 | The inbound port used to listen for http connections.
-__htmlFilename__ | string | `../public/statisticsPage.html` | The page served on any request to the statistics server.
+__htmlFilename__ | string | `./public/statisticsPage.html` | The page served on any request to the statistics server.
 
 ---
 

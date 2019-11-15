@@ -719,28 +719,40 @@ export class HttpReverseProxy {
 
     const httpsServerOptions: https.ServerOptions = {
 
+      /**
+       * The SNICallback (Server Name Indication) is handled by the TLS Module.
+       * For modern browsers the request for a certificate does not rely
+       * of a static certificate(s) loaded at the startup of the https server.
+       * Older browsers still require the statically loaded certificates.
+       * This can be a problem in a reverse proxy hosting many sites.
+       */
+
       SNICallback: (hostname: string, cb: (error: Error, ctx: SecureContext) => void) => {
 
         const certificate = this.certificates.getCertificate(hostname)
 
         if (cb) {
 
-          if (certificate) {
+          /**
+           * If there is not a certificate in the table for this hostname
+           * i.e. It was not loaded via LetsEncrypt or with the filenames in the RegistrationHttpsOptions
+           * The callback will use the certificates specified below (key:, cert:, ca:)
+           * These certificates are specified in the httpsOptions of the HttpReverseProxyOptions
+           * (keyFilename:, certificateFilename:, caFilename:)
+           * The certificate must have a commonName matching the hostname
+           */
 
-            cb(null, certificate)
-          }
-          else {
-
-            this.log && this.log.error({ hostname: hostname }, 'Certificate not found')
-
-            cb(new Error(`Certificate not available for ${hostname}`), null)
-          }
+          cb(null, certificate)
         }
         else {
 
           return certificate
         }
       },
+
+      /**
+       * Load the static certificate(s)
+       */
 
       key: this.certificates.getCertificateData(httpsOptions.keyFilename, false),
       cert: this.certificates.getCertificateData(httpsOptions.certificateFilename, false),
@@ -795,10 +807,10 @@ export class HttpReverseProxy {
         this.stats && this.stats.updateCount('HttpsRequests', 1)
       });
 
-      /**
-      * Listen to the `upgrade` event and proxy the
-      * WebSocket requests as well.
-      */
+    /**
+    * Listen to the `upgrade` event and proxy the
+    * WebSocket requests as well.
+    */
 
     httpsServer.on('upgrade', this.websocketsUpgrade)
 
@@ -852,7 +864,7 @@ export class HttpReverseProxy {
   }
 
   /**
-   * Handle the request ot upgrade to websockets.
+   * Handle the request to upgrade to websockets.
    * Most of the work is handled by http-proxy
    */
 

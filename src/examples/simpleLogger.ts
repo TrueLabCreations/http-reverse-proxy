@@ -5,7 +5,7 @@ const log = (type: string, color: (value:string) => string, data: {} | null, mes
     console.log(color(`${type}: ${JSON.stringify({time: new Date().toLocaleString(), ...data})}: ${message}`))
   }
   else {
-    console.log(color (`${type}: ${{time:new Date().toLocaleString()}} ${message}`))
+    console.log(color (`${type}: ${JSON.stringify({time:new Date().toLocaleString()})} ${message}`))
   }
 }
 

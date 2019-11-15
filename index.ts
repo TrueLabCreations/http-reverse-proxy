@@ -2,7 +2,7 @@ export {
   HttpReverseProxy,
   HttpReverseProxyOptions,
   HttpsServerOptions
-} from "./lib/httpReverseProxy"
+} from "./src/lib/httpReverseProxy"
 
 export {
   HttpRouter,
@@ -11,47 +11,47 @@ export {
   RegistrationHttpsOptions,
   RegistrationLetsEncryptOptions,
   ExtendedIncomingMessage
-} from './lib/httpRouter'
+} from './src/lib/httpRouter'
 
 export {
   Route,
-} from './lib/route'
+} from './src/lib/route'
 
-export { Certificates } from "./lib/certificates"
+export { Certificates } from "./src/lib/certificates"
 
 export {
   LetsEncryptUsingAcmeClient,
   LetsEncryptClientOptions
-} from "./lib/letsEncrypt/letsEncryptUsingAcmeClient"
+} from "./src/lib/letsEncrypt/letsEncryptUsingAcmeClient"
 
 export {
   LetsEncryptUsingSelfSigned,
   LetsEncryptSelfSignedOptions
-} from "./lib/letsEncrypt/letsEncryptUsingSelfSigned"
+} from "./src/lib/letsEncrypt/letsEncryptUsingSelfSigned"
 
-export { BaseDNSUpdate } from './lib/dns/dnsUpdate'
+export { BaseDNSUpdate } from './src/lib/dns/dnsUpdate'
 
 export {
   GoDaddyDNSUpdate,
   GoDaddyDNSUpdateOptions
-} from './lib/dns/goDaddyDNSUpdate'
+} from './src/lib/dns/goDaddyDNSUpdate'
 
-export { Statistics } from "./lib/statistics"
+export { Statistics } from "./src/lib/statistics"
 
 export {
   StatisticsServer,
   StatisticsServerOptions,
   StatisticsServerHttpOptions,
   StatisticsServerWebsocketOptions
-} from './lib/statisticsServer'
+} from './src/lib/statisticsServer'
 
 export { 
   makeUrl, 
   prependHttpIfRequired, 
   startsWith, 
   respondNotFound 
-} from './lib/util'
+} from './src/lib/util'
 
-export { SimpleHttpServer } from "./examples/simpleHttpServer"
-export { SimpleLogger } from "./examples/simpleLogger"
+export { SimpleHttpServer } from "./src/examples/simpleHttpServer"
+export { SimpleLogger } from "./src/examples/simpleLogger"
 
