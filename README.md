@@ -12,7 +12,7 @@ There are more in-depth installation instructions [here](#setting-it-all-up-from
 
 ## Running a simple http reverse proxy server
 
-for this simple test you need a couple of entries in the hosts file:
+For this simple test you need a couple of entries in the hosts file:
 
 ```
 # add host entries for testing
@@ -23,7 +23,7 @@ for this simple test you need a couple of entries in the hosts file:
 A good tutorial for editing the hosts file on most common system types can be found [here](https://www.howtogeek.com/howto/27350/beginner-geek-how-to-edit-your-hosts-file/)
 
 
-The simplest example of using this package is demonstrated by setting up some routes using http. For that you need to edit the hosts file as indicated above and create a small project. 
+The simplest example of using this package is demonstrated by setting up some routes using http. 
 
 If you are using Typescript the index.ts would contain:
 
@@ -111,6 +111,8 @@ Run the project from a command prompt in the directory containing the `index.js`
 node index.js
 ```
 
+If you want to view the statistics from the server you will need to copy the the file 'statisticsPage.html' from the public folder of the package (in node_modules) to a public folder at the root of your project. The statistics server defaults to localhost:3001.
+
 In the browser address bar on the same machine type:
 http://server1.test.com
 
@@ -125,7 +127,7 @@ You are now running a reverse proxy sharing a single front end ip address (port 
 Running an Https server is a bit more complex. The complexity is due to the requirement for `certficates`. 
 
 Certificates verify the
-authenticity of the server (usually the domain or host name) and set the goundwork for encrypting the data passing between the browser and the server.
+authenticity of the server (usually the domain or host name) and set the groundwork for encrypting the data passing between the browser and the server.
 
 A certificate is only valid if it is backed-up by a trusted [certificate authority](https://en.wikipedia.org/wiki/Certificate_authority).
 
@@ -137,6 +139,7 @@ is generated locally and does not have a valid certificate authority backing it 
 There is also free service that will grant certificates if you can prove you own the domain or host name. This 
 service is called `LetsEncrypt`. A later example shows how to set that up.
 
+> Typescript
 
 ```ts
 import {
@@ -165,8 +168,8 @@ const letsEncryptServerOptions: LetsEncryptSelfSignedOptions = {
 
   organizationName: 'Self testing',
   country: 'US',
-  state: 'Georgia',
-  locality: 'Roswell'
+  state: 'AnyState',
+  locality: 'AnyTown'
 }
 
 const httpReverseProxyOptions: HttpReverseProxyOptions = {
@@ -217,9 +220,10 @@ proxy.addRoute('https://server2.test.com', 'localhost:8002', routingOptions)
 logger.info(null, 'Https Reverse Proxy server started')
 
 ```
-[HttpReverseProxyOptions](#http-server-options) | [LetsEncryptSelfSignedOptions](#lets-encrypt-options) | [RouteRegistrationOptions](#route-registration-options) | [StatisticsServerOptions](#statistics-server-http-options)
+[HttpReverseProxyOptions](#http-server-options) | [LetsEncryptSelfSignedOptions](#lets-encrypt-options) | [RouteRegistrationOptions](#route-registration-options) | [StatisticsServerOptions](#statistics-server-options)
 
 > Javascript
+
 ```js
 const  {
   HttpReverseProxy,
@@ -345,6 +349,185 @@ servers that are outside of your control the connection on the back side should 
 
 ---
 
+## Running a Let's Encrypt secure proxy
+
+> Typescript
+
+```ts
+import {
+  HttpReverseProxyOptions,
+  HttpReverseProxy,
+  LetsEncryptClientOptions,
+  LetsEncryptUsingAcmeClient,
+  RouteRegistrationOptions,
+  SimpleHttpServer,
+  Statistics,
+  StatisticsServerOptions,
+  StatisticsServer,
+  SimpleLogger
+} from 'http-reverse-proxy-ts'
+
+const hostname = '<Your Host Name>' // replace this with your actual host name
+const stats = new Statistics()
+const logger = new SimpleLogger()
+
+const statisticsServerOptions: StatisticsServerOptions = {
+
+  stats: stats,
+  htmlFilename: './public/statisticsPage.html'
+}
+
+const letsEncryptServerOptions: LetsEncryptClientOptions = {
+  noVerify: true
+}
+
+const httpReverseProxyOptions: HttpReverseProxyOptions = {
+
+  letsEncryptOptions: letsEncryptServerOptions,
+
+  httpsOptions: {
+
+    port: 443,
+
+    certificates: {
+
+      certificateStoreRoot: './certificates'
+    },
+  },
+
+  stats: stats,
+  log: logger,
+}
+
+const routingOptions: RouteRegistrationOptions = {
+
+  https: {
+
+    redirectToHttps: true,
+
+    letsEncrypt: {
+
+      email: 'myname@mydomain.com', // This needs a real email address
+      production: false, // change this to true once testing is complete
+    }
+  }
+}
+
+const server1 = new SimpleHttpServer(1, 8001)
+const server2 = new SimpleHttpServer(2, 8002)
+
+const statisticsServer = new StatisticsServer(statisticsServerOptions)
+
+if ( hostname === '<Your Host Name>'){
+
+  logger.error({hostname:hostname}, `hostname in 'letsEncryptHostTestProxy.ts' must be set to your registered host name`)
+  
+  process.exit(0)
+}
+
+server1.start()
+server2.start()
+
+const proxy = new HttpReverseProxy(httpReverseProxyOptions, LetsEncryptUsingAcmeClient)
+
+proxy.addRoute(hostname, 'localhost:8001', routingOptions)
+proxy.addRoute(hostname, 'localhost:8002', routingOptions) // round robin between servers
+
+logger.info({hostname: hostname}, 'Https Lets Encrypt Test Proxy started')
+```
+
+> Javascript
+
+```js
+const {
+  HttpReverseProxy,
+  LetsEncryptUsingAcmeClient,
+  SimpleHttpServer,
+  Statistics,
+  StatisticsServer,
+  SimpleLogger
+} = require("http-reverse-proxy-ts");
+
+const hostname = "<Your Host Name>"; // replace this with your actual host name
+const stats = new Statistics();
+const logger = new SimpleLogger();
+
+const statisticsServerOptions = {
+  stats: stats,
+  htmlFilename: "./public/statisticsPage.html"
+};
+
+const letsEncryptServerOptions = {
+  noVerify: true
+};
+
+const httpReverseProxyOptions = {
+  letsEncryptOptions: letsEncryptServerOptions,
+
+  httpsOptions: {
+    port: 443,
+
+    certificates: {
+      certificateStoreRoot: "./certificates"
+    }
+  },
+
+  stats: stats,
+  log: logger
+};
+
+const routingOptions = {
+  https: {
+    redirectToHttps: true,
+
+    letsEncrypt: {
+      email: "myname@mydomain.com", // This needs a real email address
+      production: false // change this to true once testing is complete
+    }
+  }
+};
+
+const server1 = new SimpleHttpServer(1, 8001);
+const server2 = new SimpleHttpServer(2, 8002);
+
+const statisticsServer = new StatisticsServer(statisticsServerOptions);
+
+if (hostname === "<Your Host Name>") {
+  logger.error(
+    { hostname: hostname },
+    `hostname in 'letsEncryptHostTestProxy.js' must be set to your registered host name`
+  );
+
+  process.exit(0);
+}
+
+server1.start();
+server2.start();
+
+const proxy = new HttpReverseProxy(
+  httpReverseProxyOptions,
+  LetsEncryptUsingAcmeClient
+);
+
+proxy.addRoute(hostname, "localhost:8001", routingOptions);
+proxy.addRoute(hostname, "localhost:8002", routingOptions); // round robin between servers
+
+logger.info({ hostname: hostname }, "Https Lets Encrypt Test Proxy started");
+```
+To test the retrieval of certificates from Let's Encrypt, you need a hostname pointed to your ip-address (the network side of the router). You also need to instruct your router to forward packets arriving on port 80 and port 443 to your local system. A starting point can be found [here](https://www.howtogeek.com/66214/how-to-forward-ports-on-your-router/)
+
+You can obtain a temporary host name from  sites like [no-ip](https://www.noip.com/remote-access) or [DysDNS](https://dyn.com/remote-access/). I am sure there a many others.
+
+Once the ground-work is laid, replace `<Your Host Name>` with your registered hostname. Compile and run the project.
+
+The proxy will start and request a certificate for your hostname. This certificate will not be backed by a 'certificate authority'. However, Once you have verified the system is working you can change the routingOptions.https.letsEncrypt.production to 'true', delete the old certificates and run it again.
+
+In a manner similar to the prior examples, enter your host name into the browser and you should receive a response from Server1 or Server2. If you have not received a producton certificate you will get the same warning as the self signed certificates.
+
+Sometimes modern routers will not allow you to open a page with the web address of the router. This is an attempt to twart a hack called 'DNS rebinding'. If the browser cannot open the page, try your phone with the wi-fi turned off. 
+
+---
+
 # Http Reverse Proxy
 
 This is the class providing the primary interface to the reverse poxy server. Other than the plethora of [options](#configuration-options) it has two main interfaces:
@@ -421,6 +604,18 @@ Each key (property) of the object is a measurement point and the value of the pr
 The default web page served by the statistics server is read from `./public/statisticsPage.html`. This default page can be overridden by setting the `htmlFilename` in the [StatisticsServerOptions](#statistics-server-options).
 
 The default web page is a minimal implementation requiring no outside libraries. It will display the table with a single row for each statistic name and a column for each workerId. WorkerId 0 is the master. In a non-clustered configuration all statistics will be associated with the master.
+
+# Clustering
+
+The examples given above each run in a single process. This is sufficent for small scale testing.
+
+For a larger production environment the proxy can be run as a cluster. In a cluster a single master process is started with a number of worker processes providing the routing. The master monitors the workers and restarts any worker that exits unexpectedly. 
+
+Clustering is enabled by setting the `clustered` option of the [httpServerOptions](#http-server-options) to either `true` or a number.
+
+If the value is set to `true` the master process will start worker processes based on the number of cores in the cpu. You can override this by setting `clustered` to a number. The minimum is 2 the maximum is 32.
+
+Clustering should be employed only after the non-clustered router is tested and running properly.
 
 # Configuration Options
 
@@ -592,6 +787,7 @@ This is the default value used by the https server if none is provided.
 export interface StatisticsServerOptions {
   stats: Statistics
   noStart?: boolean
+  htmlFilename?: string
   http?: StatisticsServerHttpOptions
   websocket?: StatisticsServerWebsocketOptions
 }
@@ -601,24 +797,23 @@ Option | Type | Default | Description
 ---|---|---|---
 __stats__ | [object](#statistics) | none | The instance of the Statistics class maintaining the counts.
 __noStart__ | boolean | false | When set to true the server must be started manually later in the startup process.
-__http__ | [object](#statistics-server-http-options) | port: 3000 | The configuration options for the http side of the statistics server.
+__htmlFilename__ | ./public/statisticsPage.html | The page served from the Statistics server.
+__http__ | [object](#statistics-server-http-options) | port: 3001 | The configuration options for the http side of the statistics server.
 __websocket__ | [object](#statistics-server-websocket-options) | interval: 5000 | The configuration options for the websocket side of the statistics server.
 
 ---
 
-## Statistics server http options
+# Statistics server http options
 ```ts
 export interface StatisticsServerHttpOptions {
   host?: string
   port: number
-  htmlFilename?: string
 }
 ```
 Option | Type | Default | Description
 ---|---|---|---
 __host__ | network-interface | [all](https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback) | The network interface. 
-__port__ | number | 3000 | The inbound port used to listen for http connections.
-__htmlFilename__ | string | `./public/statisticsPage.html` | The page served on any request to the statistics server.
+__port__ | number | 3001 | The inbound port used to listen for http connections.
 
 ---
 
