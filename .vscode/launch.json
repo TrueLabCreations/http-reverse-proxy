@@ -19,32 +19,16 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Mocha Tests",
-      "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
-      "args": [
-        "-u",
-        "tdd",
-        "--timeout",
-        "120000",
-        "--colors",
-        "${workspaceFolder}/test/dist/test/whiteboxTests.js"
-      ],
-      "internalConsoleOptions": "openOnSessionStart",
-      "cwd": "${workspaceFolder}/test/dist/test"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name":"Run Whitebox Tests",
+      "name":"Run Https example",
       "env":
         {
           "NODE_ENV":"development"
         },
-      "program": "${workspaceFolder}/test/whiteboxTests.ts",
+      "program": "${workspaceFolder}/src/examples/simpleHttpsProxy.ts",
       "outFiles": [
-        "${workspaceFolder}/dist/test/*.js"
+        "${workspaceFolder}/dist/src/examples/*.js"
       ],
-      "cwd": "${workspaceFolder}/dist"
+      "cwd": "${workspaceFolder}/"
     },
     {
       "type": "node",

@@ -6,6 +6,20 @@ import { SimpleLogger } from "../../examples/simpleLogger";
 import { ClusterMessage } from '../httpReverseProxy';
 import { Statistics } from '../statistics';
 
+/**
+ * The base Let's Encrypt options
+ * 
+ * The base class instantiates an http server to respond to the Http-01 challenges
+ * The port and host are used by the server
+ * 
+ * The dnsChallenge is the interface to a particular DNS server 
+ * when you need to support a dns-01 challenge.
+ * 
+ * The dnsNameServer is optional. If specified it is the ip address of the DNS nameserver.
+ * When specified the DNS challenge will query the nameserver to make sure the
+ * update to the TXT record has propagated to the server specified
+ */
+
 export interface BaseLetsEncryptOptions {
   port?: number
   host?: string
@@ -16,9 +30,19 @@ export interface BaseLetsEncryptOptions {
   stats?: Statistics
 }
 
+/**
+ * The http-01 challenge table is a simple object with host name and modified tokens as keys 
+ * and the challenge response as the value
+ */
+
 interface HttpChallengeTable {
   [hostAndToken: string]: string
 }
+
+/**
+ * For clustered environment the challenges are distributed to all of the 
+ * cluster workers through messages handled by the cluster master
+ */
 
 export interface LetsEncryptMessage extends ClusterMessage {
 
@@ -27,9 +51,15 @@ export interface LetsEncryptMessage extends ClusterMessage {
   keyAuthorization?: string
 }
 
-const oneMonth = 30 * 24 * 60 * 60 * 1000
+/**
+ * THis is the base class for the specific implentation of 
+ * the Let's Encrypt Acme challenge handlers.
+ * 
+ * It instantiates the Http server to handle the http01 challenges
+ */
 
 export class BaseLetsEncryptClient {
+
   protected certificates: Certificates
   protected networkInterface: string
   protected port: number
@@ -54,7 +84,8 @@ export class BaseLetsEncryptClient {
   }
 
   /**
-   * This method should be overwritten by new implementations
+   * This method should be overwritten by new implementations.
+   * See the letsEncryptAcmeClient for details
    */
 
   protected getNewCertificate = async (
@@ -77,6 +108,10 @@ export class BaseLetsEncryptClient {
     return this.port
   }
 
+  /**
+   * Start an Http server to process the challenges from Let's Encrypt
+   */
+
   private setupLetsEncryptServer = (): http.Server => {
 
     const server = http.createServer()
@@ -84,6 +119,11 @@ export class BaseLetsEncryptClient {
     server.on('request', (req: http.IncomingMessage, res: http.ServerResponse) => {
 
       this.log && this.log.info(null, `LetsEncypt validate url: ${req.url}`)
+
+      /**
+       * The server will be accessable from the outside 
+       * so care must be taken to only respond to valid Urls and tokens
+       */
 
       const validPath = /^\/.well-known\/acme-challenge\//.test(req.url)
 
@@ -134,6 +174,10 @@ export class BaseLetsEncryptClient {
     return server;
   }
 
+  /**
+   * Shut down the server to allow for a clean shutdown of the proxy
+   */
+
   public close = () => {
 
     this.stats && this.stats.updateCount('LetsEncryptServersRunning', -1)
@@ -141,54 +185,127 @@ export class BaseLetsEncryptClient {
     this.httpServer && this.httpServer.close()
   }
 
-  public getLetsEncryptCertificate = async (host: string, production: boolean, email: string,
-    renewWithin: number = oneMonth, forceRenew?: boolean): Promise<boolean> => {
+  /**
+   * This is the entry point for requesting a new certificate.
+   * 
+   * The production parameter should be false during early testing. Too many requests to the
+   * production servers will disable the account for a period of time.
+   * 
+   * ForceRenew will ignore the expiration of an existing certificate and request a new certificate.
+   * 
+   * setExpiration is a callback to allow the calling code to monitor the expiration date of the
+   * certificate and request a new one before it expires
+   */
 
-    this.stats && this.stats.updateCount('LetsEncryptCertificateRequests', 1)
+  public getLetsEncryptCertificate = async (hostname: string, production: boolean, email: string,
+    forceRenew?: boolean, setExpiration?: (expiresOn: Date) => void): Promise<boolean> => {
 
-    if (this.certificates.loadCertificateFromStore(host, true) && !forceRenew) {
+    /**
+     * Initiate the callback if required
+     */
 
-      const certificateData: CertificateInformation = this.certificates.getCertificateInformation(host)
+    const updateExpiration = () => {
 
-      if (certificateData && certificateData.expiresOn &&
-        certificateData.expiresOn.valueOf() > new Date().valueOf() + renewWithin) {
+      if ('function' === typeof setExpiration) {
 
-        return true
+        const certificateData: CertificateInformation = this.certificates.getCertificateInformation(hostname)
+        setExpiration(certificateData.expiresOn)
       }
     }
 
+    this.stats && this.stats.updateCount('LetsEncryptCertificateRequests', 1)
+
     /**
-     * set a random delay to avoid startup race condition
-     * with all of the processes trying to aquire expired or missing
-     * certificates
+     * First try to load the certificate from the store
+     */
+
+    if (this.certificates.loadCertificateFromStore(hostname) && !forceRenew) {
+
+      this.stats && this.stats.updateCount('LetsEncryptCertificatesLoaded', 1)
+
+      updateExpiration()
+      return true
+    }
+
+    /**
+     * If we are operating in a cluster then there are many of these processes running.
+     * Care must be taken to limit the number of requests for a certificate from multiple
+     * processes.
      */
 
     if (cluster.isWorker) {
 
-      this.certificates.removeCertificate(host)
+      /**
+       * If we have a certificate and we are forcing a new one, then do a little bookkeeping to
+       * determine if another process beat us to it.
+       */
+
+      let certificateData: CertificateInformation = this.certificates.getCertificateInformation(hostname)
+      const expiration = certificateData && certificateData.expiresOn
+
+      /**
+       * set a random delay to avoid startup race condition
+       * with all of the processes trying to aquire expired or missing
+       * certificates
+       */
 
       await new Promise((resolve) => {
 
         setTimeout(resolve, Math.random() * 60000)
       })
 
-      if (this.certificates.getCertificate(host)) {
+      /**
+       * If the certificate expiration has changed, another process has already updated it.
+       */
+
+      if (expiration &&
+        this.certificates.getCertificateInformation(hostname) &&
+        this.certificates.getCertificateInformation(hostname).expiresOn > expiration) {
 
         this.stats && this.stats.updateCount('LetsEncryptCertificatesRemotelyResolved', 1)
+
+        updateExpiration()
 
         return true
       }
     }
 
+    /**
+     * Request a new certificate from the implementation of this instance
+     */
+
     this.stats && this.stats.updateCount('LetsEncryptNewCertificateRequests', 1)
 
-    return this.getNewCertificate(host, production, email)
+    this.log && this.log.warn({ hostname: hostname }, 'Getting new LetsEncrypt certificate')
+
+    if (await this.getNewCertificate(hostname, production, email)) {
+
+      this.log && this.log.warn({ hostname: hostname }, 'New LetsEncrypt certificate received')
+
+      updateExpiration()
+
+      return true
+
+    }
+
+    return false
   }
 
-  private makeKey = (host: string, token: string): string => {
+  /**
+   * Helper function to turn the hostname and token into a key for the certiciate table
+   */
 
-    return `${host}_${token.replace(/\W-/g, '')}`
+  private makeKey = (hostname: string, token: string): string => {
+
+    return `${hostname}_${token.replace(/\W-/g, '')}`
   }
+
+  /**
+   * The getNewCertificate method will use this method to add a challenge to the table.
+   * 
+   * If we are working in a cluster the update is sent to the master process to be routed to
+   * all of the worker processes
+   */
 
   protected addChallenge = (host: string, token: string, keyAuthorization: string) => {
 
@@ -212,6 +329,13 @@ export class BaseLetsEncryptClient {
     }
   }
 
+  /**
+   * Once a challenge is complete, remove it.
+   * 
+   * If we are working in a cluster the update is sent to the master process to be routed to
+   * all of the worker processes
+   */
+
   protected removeChallenge = (host: string, token: string) => {
 
     if (cluster.isWorker) {
@@ -234,6 +358,12 @@ export class BaseLetsEncryptClient {
       delete this.outstandingChallenges[this.makeKey(host, token)]
     }
   }
+
+  /**
+   * If we are working in a cluster messages will arrive from the server to update
+   * the table. Process the Add and Remove messages. This method is called by the master
+   * process with any challenge messages it receives
+   */
 
   public processMessage = (message: LetsEncryptMessage) => {
 

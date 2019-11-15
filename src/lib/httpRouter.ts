@@ -8,42 +8,87 @@ import { ProxyUrl, makeUrl, startsWith, respondNotFound } from './util';
 import { Route } from './route'
 import { Statistics } from './statistics';
 
+/**
+ * LetsEncrypt options when a route is registered. These options take effect
+ * on the first route that is registered under a host name.
+ * 
+ * Subsequent calls to addRoute for the same host name with 
+ * different LetsEncrypt options will be silently ignored.
+ */
+
 export interface RegistrationLetsEncryptOptions {
-  email: string
-  production?: boolean
-  renewWithin?: number
-  forceRenew?: boolean
+  email: string         // The email address used to set up the account
+  production?: boolean  // If true the production server sill be used.
+  // If too many failed requests are made to the
+  // production servers, the account will be 
+  // blocked for a period of time.
+  // Only start using the production servers
+  // once the requests are processed correctly
+  renewWithin?: number  // Try to renew the certificate before it expires.
+  // The default is 30 days (suggested by LetsEncrypt)
+  // THis is in milliseconds
+  forceRenew?: boolean  // When set to true the certificate will be renewed
+  // without regard to it's expiration
 }
+
+/**
+ * LetsEncrypt options when a route has an https server. These options take effect
+ * on the first route that is registered under a host name.
+ * 
+ * Subsequent calls to addRoute for the same host name with 
+ * different LetsEncrypt options will be silently ignored.
+ */
 
 export interface RegistrationHttpsOptions {
-  redirectToHttps: boolean
-  keyFilename?: string
-  certificateFilename?: string
-  caFilename?: string
-  letsEncrypt?: RegistrationLetsEncryptOptions
+  redirectToHttps: boolean      // If true requests to http will be redirected to https
+  keyFilename?: string          // If the host has a permanent certificate 
+  // this is the absolute path to the key file (PEM)
+  certificateFilename?: string  // The path to the permanent certificate file
+  caFilename?: string           // The path to the permanent cs file
+  letsEncrypt?: RegistrationLetsEncryptOptions // If you are using LetsEncrypt and not permanent
+  // certificates, this is the configuration for this host
 }
 
+/**
+ * The complete set of registration options for a route/host
+ */
+
 export interface RouteRegistrationOptions {
-  https?: RegistrationHttpsOptions,// | boolean,
-  secureOutbound?: boolean
-  useTargetHostHeader?: boolean
+  https?: RegistrationHttpsOptions, // The https options for this route/host
+  secureOutbound?: boolean          // If true, http-proxy will use https and check the credentials on the target(s)
+  useTargetHostHeader?: boolean     // If true the router will sustitute the target host name for the
+  // inbound host name in the request
   stats?: Statistics
 }
+
+/**
+ * A minor extension to the http IncommingMessage.
+ * Used for a littel internal bookkeepping
+ */
 
 export interface ExtendedIncomingMessage extends http.IncomingMessage {
   host: string
   originalUrl: string
 }
 
+/**
+ * The set of options for the HttpRouter.
+ * These a normally set by the httpReverseProxy
+ */
+
 export interface HttpRouterOptions {
-  proxy: httpProxy
-  certificates?: Certificates
-  https?: RegistrationHttpsOptions
-  redirectPort?: number
-  letsEncrypt?: BaseLetsEncryptClient,
+  proxy: httpProxy              // The Http-proxy service
+  certificates?: Certificates   // The Certificates table for LetsEncrypt
+  https?: RegistrationHttpsOptions  // Options for hadling https requests
+  redirectPort?: number             // Port to redirect https requests
+  letsEncrypt?: BaseLetsEncryptClient,  // Instance of LetsEncrypt client
   log?: SimpleLogger
   stats?: Statistics
 }
+
+/**
+ * Default options for the addRoute with no options
+ */
 
 const defaultRegistrationOptions: RouteRegistrationOptions = {
   https: null,
@@ -52,6 +97,10 @@ const defaultRegistrationOptions: RouteRegistrationOptions = {
 
 const ONE_DAY = 60 * 60 * 24 * 1000;
 const ONE_MONTH = ONE_DAY * 30;
+
+/**
+ * The HttpRouter. This handles most of the heavy lifting in the routing process
+ */
 
 export class HttpRouter {
   protected hostname: string
@@ -63,6 +112,13 @@ export class HttpRouter {
   protected stats: Statistics
   protected redirectPort: number
   protected routes: Route[]
+  private certificateTimer: NodeJS.Timeout
+  protected certificateFailureCount: number
+  protected letEncryptBusy: boolean;
+
+  /**
+   * A new httpRouter requires a hostname and minimal options
+   */
 
   constructor(hostname: string, options: HttpRouterOptions) {
     this.hostname = hostname
@@ -71,28 +127,63 @@ export class HttpRouter {
     this.https = options.https
     this.letsEncrypt = options.letsEncrypt
     this.redirectPort = options.redirectPort
+    /**
+     * Routes are stored iin a sorted array with the longest inbound url first.
+     * This makes sure a request for server1.test.com/api comes before server1.test.api/
+     */
     this.routes = []
     this.log = options.log
     this.stats = options.stats
+    /**
+     * The certificate timer is used to request a new certificate before the current one expires
+     */
+    this.certificateTimer = null
+    /**
+     * Too many errors requesting a new certificate will abort the process
+     */
+    this.certificateFailureCount = 0
 
+    /**
+     * If https is specified in the options, set up the certificates
+     */
     if (options.https) {
       this.setupCertificates(options.https)
     }
   }
+
+  /**
+   * Add route consisting of the inbound url and the outbound targets 
+   */
 
   public addRoute = (
     from: Partial<URL>,
     to: string | ProxyUrl | (string | ProxyUrl)[],
     options: RouteRegistrationOptions = defaultRegistrationOptions) => {
 
+    /**
+     * There must be a valid source url and target url(s)
+     */
+
     if (!(from = makeUrl(from)) || !to || (Array.isArray(to) && to.length === 0)) {
 
       throw Error('Cannot add a new route with invalid "from" or "to"');
     }
 
+    /**
+     * Get the source (inbound) path
+     */
+
     const pathname = from.pathname
 
+    /**
+     * See if we already have a route with that path
+     */
+
     let route: Route = this.routes.find((value) => value.path === pathname)
+
+    /**
+     * If not, add a new Route
+     */
 
     if (!route) {
 
@@ -104,7 +195,15 @@ export class HttpRouter {
       this.stats && this.stats.updateCount(`PathsAddedFor:${this.hostname}`, 1)
     }
 
+    /**
+     * Add the targets to the route
+     */
+
     route.addTargets(to, options)
+
+    /**
+     * Perform a sanity check on the resulting route
+     */
 
     if (route.noTargets()) {
 
@@ -115,27 +214,52 @@ export class HttpRouter {
 
       throw Error('Cannot add a new route with invalid "from" or "to"');
     }
-    //
-    // Sort routes -- longer routes first
-    //
+
+    /**
+     * Sort routes -- longer routes first
+     */
+
     this.routes = this.routes.sort((routeA, routeB) => routeB.path.length - routeA.path.length);
 
     return this;
-  };
+  }
+
+  /**
+   * Remove a route from the list of targets
+   */
 
   public removeRoute = (from: Partial<URL>, to?: string | ProxyUrl | (string | ProxyUrl)[]) => {
 
     if (!(from = makeUrl(from))) {
+      /**
+       * Nothiing to do
+       */
       return this;
     }
 
+    /**
+     * Get the source (inbound) path
+     */
+
     const pathname = from.pathname
+
+    /**
+     * See if we have a Route with that path
+     */
 
     const route: Route = this.routes.find((route) => route.path === pathname)
 
     if (route) {
 
+      /**
+       * Remove the matching targets
+       */
+
       route.removeTargets(to)
+
+      /**
+       * IF the Route has no targets, remove the Route
+       */
 
       if (route.noTargets()) {
 
@@ -151,28 +275,59 @@ export class HttpRouter {
     return this;
   }
 
+  /**
+   * Helper method to check we have routes
+   */
+
   public noRoutes = (): boolean => {
     return this.routes.length === 0
   }
 
+  /**
+   * Handle routing of http requests
+   */
+
   public routeHttp = (req: ExtendedIncomingMessage, res: http.ServerResponse) => {
+
+    /**
+     * Get a target matching the route
+     */
 
     const target = this.getTarget(req)
 
     this.stats && this.stats.updateCount(`HttpRouteRequestsFor:${this.hostname}`, 1)
 
+    /**
+     * If we have a matching target we can pass the request on to http-proxy
+     */
+
     if (target) {
 
+      /**
+       * Check if this http request should be redirected to https
+       */
+
       if (this.shouldRedirectToHttps(target)) {
+
+        /**
+         * If so, inform the browser
+         */
 
         this.redirectToHttps(req, res);
       }
       else {
 
-        //TO DO handle errors
         try {
-          // req.headers.host = target.host
+
+          /**
+           * Pass the request on to http-proxy. Target.secure is set by RouteRegistrationOptions.secureOutbound
+           */
+
           this.proxy.web(req, res, { target: target, secure: target.secure },
+
+            /**
+             * If it fails, let the client know we are lost
+             */
 
             (error: any, req: http.IncomingMessage, res: http.ServerResponse) => {
 
@@ -198,11 +353,23 @@ export class HttpRouter {
 
   }
 
+  /**
+   * Handle routing https requests
+   */
+
   public routeHttps = (req: ExtendedIncomingMessage, res: http.ServerResponse) => {
+
+    /**
+     * Get the target matching the route
+     */
 
     const target = this.getTarget(req)
 
     this.stats && this.stats.updateCount(`HttpsRouteRequestsFor:${this.hostname}`, 1)
+
+    /**
+     * If we have a matching target we can pass the request on to http-proxy
+     */
 
     if (target) {
 
@@ -233,11 +400,23 @@ export class HttpRouter {
     }
   }
 
+  /**
+   * Helper method to determine if an http request should be redirected to https
+   * 
+   * If we have https options and they specify http requests should be redirected
+   * 
+   * Then we only need to make sure this is not a request for a LetsEncrypt challenge verification
+   */
+
   private shouldRedirectToHttps = (target: ProxyUrl) => {
     return this.https
       && this.https.redirectToHttps
       && (!this.letsEncrypt || target.href != this.letsEncrypt.href)
   }
+
+  /**
+   * Helper method to redirect the http request to https
+   */
 
   private redirectToHttps = (req: ExtendedIncomingMessage, res: http.ServerResponse) => {
 
@@ -245,8 +424,9 @@ export class HttpRouter {
 
     const targetPort = this.redirectPort;
 
-    //TO DO check if we should use forwarded host - resolved via this.hostname
-    // const hostname = req.headers.host.split(':')[0] + (targetPort ? ':' + targetPort : '')
+    /**
+     * Set up the redirect to use the same host and url
+     */
 
     const hostname = this.hostname + (targetPort ? ':' + targetPort : '')
 
@@ -265,40 +445,170 @@ export class HttpRouter {
     this.stats && this.stats.updateCount(`HttpRedirectsFor:${this.hostname}`, 1)
   }
 
-  protected setupCertificates = (options: RegistrationHttpsOptions) => {
+  /**
+   * Set up the certificateTimer to fire when the Letsencrypt certificate gets too old
+   * 
+   * When the timer fires, a new certificate is requested
+   */
+
+  private setCertificateExpiration = (expiresOn: Date, renewWithin: number = ONE_MONTH) => {
+
+    /**
+     * If the timer is already set, ignore this request
+     */
+
+    if (this.certificateTimer) {
+
+      return
+    }
+
+    let milliseconds = expiresOn ? expiresOn.valueOf() - new Date().valueOf() - renewWithin : 0
+
+    /**
+     * Sanity check
+     */
+
+    if (milliseconds <= 0) {
+
+      milliseconds = 10000
+    }
+
+    this.certificateTimer = setTimeout(async () => {
+
+      /**
+       * Clear the certificate timer. It will be set by the request for a certificate
+       */
+
+      this.certificateTimer = null
+
+      /**
+       * If we get the certificate, we are done
+       */
+
+      if (await this.letsEncrypt.getLetsEncryptCertificate(
+        this.hostname,
+        this.https.letsEncrypt.production,
+        this.https.letsEncrypt.email,
+        true, this.setCertificateExpiration
+      )) {
+
+        this.certificateFailureCount = 0
+      }
+      else {
+        
+        /**
+         * Do not allow unlimited failures
+         */
+
+        if (++this.certificateFailureCount > 5) {
+
+          this.log && this.log.error({ hostname: this.hostname }, 'LetsEncrypt get certificate aborted')
+          this.stats && this.stats.updateCount(`LetsEncryptCertificateAborted: ${this.hostname}`, 1)
+        }
+        else {
+
+          this.log && this.log.error({ hostname: this.hostname }, 'LetsEncrypt get certificate failed')
+          this.stats && this.stats.updateCount(`LetsEncryptCertificateFailed: ${this.hostname}`, 1)
+
+          /**
+           * If we have a certificate (expiresOn not null), try again tomorrow
+           * Otherwise we will try again in 10 seconds.
+           */
+
+          this.setCertificateExpiration(expiresOn, ONE_MONTH - this.certificateFailureCount * ONE_DAY)
+        }
+      }
+    }, milliseconds)
+  }
+
+  /**
+   * Set up the certificates for this route/hostname
+   */
+
+  protected setupCertificates = async (options: RegistrationHttpsOptions) => {
 
     if (!this.certificates) {
+
       throw Error('Cannot register https routes without certificate option');
     }
 
-    // const https: RegistrationHttpsOptions = options.https;
+    /**
+     * If we do not have a certificate see if we can request one
+     */
 
     if (!this.certificates.getCertificate(this.hostname)) {
 
       if ('object' === typeof options) {
 
         if (options.keyFilename || options.certificateFilename || options.caFilename) {
-          this.certificates.loadCertificateFromFiles(this.hostname, options.keyFilename, options.certificateFilename, options.caFilename, false)
 
-          this.stats && this.stats.updateCount(`CertificatesLoadedFor:${this.hostname}`, 1)
+          /**
+           * We are using permanent certificates for this route/host
+           */
+
+          if (this.certificates.loadCertificateFromFiles(
+            this.hostname, options.keyFilename, options.certificateFilename, options.caFilename)) {
+
+            this.stats && this.stats.updateCount(`CertificatesLoadedFor:${this.hostname}`, 1)
+          }
+          else {
+
+            this.stats && this.stats.updateCount(`CertificatesMissing:${this.hostname}`, 1)
+
+            this.log && this.log.error({ hostname: this.hostname }, 'Missing cerrtificate files')
+          }
         }
         else if (options.letsEncrypt) {
 
+          /**
+           * Set up for a temporary certificate
+           */
+
           if (!this.letsEncrypt) {
-            console.error('Missing LetsEncrypt in router configuration');
-            return;
+
+            /**
+             * We have a configuration issue
+             */
+
+            this.log && this.log.error({ hostname: this.hostname }, 'Missing LetsEncrypt in router configuration')
+            return
           }
 
-          this.log && this.log.info(null, `Getting Let's Encrypt certificates for ${this.hostname}`);
+          /**
+           * Test to see if another route is already working on it.
+           * Requesting a certificate is an asynchronous process.
+           */
+
+          if (this.letEncryptBusy) {
+
+            return
+          }
+
+          this.letEncryptBusy = true
+
+          this.log && this.log.info(null, `Getting Let's Encrypt certificates for ${this.hostname}`)
 
           this.stats && this.stats.updateCount(`CertificateRequestsFor:${this.hostname}`, 1)
 
-          this.letsEncrypt.getLetsEncryptCertificate(
+          /**
+           * See if LetsEncrypt can get us a certificate
+           */
+
+          if ( !await this.letsEncrypt.getLetsEncryptCertificate(
             this.hostname,
             options.letsEncrypt.production,
             options.letsEncrypt.email,
-            options.letsEncrypt.renewWithin * ONE_DAY || ONE_MONTH,
-            options.letsEncrypt.forceRenew);
+            options.letsEncrypt.forceRenew, this.setCertificateExpiration)){
+
+              /**
+               * If we fail schedule a retry
+               */
+
+              this.setCertificateExpiration(null)
+
+            }
+
+          this.letEncryptBusy = false
         }
       }
       else {
@@ -308,9 +618,17 @@ export class HttpRouter {
     }
   }
 
+  /**
+   * Dig through the Routes to find an appropriate target
+   */
+
   public getTarget = (req: ExtendedIncomingMessage): ProxyUrl => {
 
-    const url = req.url;
+    const url = req.url
+
+    /**
+     * Try to resolve the route
+     */
 
     const route: Route = this.resolve(url)
 
@@ -322,32 +640,44 @@ export class HttpRouter {
       return null;
     }
 
+    /**
+     * Fix up the destination path
+     */
+
     const pathname: string = route.path;
 
     if (pathname.length > 1) {
 
-      //
-      // remove prefix from src
-      //
-
+      /**
+       * remove prefix from src
+      */
+       
       req.originalUrl = url; // save original url
       req.url = url.substr(pathname.length) || '/';
     }
 
+    /**
+     * Get the nect target in the route
+     */
+
     const target = route.nextTarget();
 
-    //
-    // Fix request url if target pathname specified.
-    //
+    /**
+     * Fix request url if target pathname specified.
+     */
+    
     if (target.pathname) {
+
       req.url = path.join(target.pathname, req.url).replace(/\\/g, '/');
     }
 
-    //
-    // Host headers are passed through from the source by default
-    // Often we want to use the host header of the target instead
-    //
+    /**
+     * Host headers are passed through from the source by default
+     * Often we want to use the host header of the target instead
+     */
+     
     if (target.useTargetHostHeader === true) {
+
       req.headers.host = target.host;
     }
 
@@ -356,6 +686,10 @@ export class HttpRouter {
 
     return target;
   }
+
+  /**
+   * For Mocha testing only
+   */
 
   public getTestTarget = (url: string): ProxyUrl => {
 
@@ -385,11 +719,21 @@ export class HttpRouter {
     return target;
   }
 
+  /**
+   * Search the Routes for one that matches the inbound request
+   */
+
   protected resolve = (url?: string): Route | null => {
 
     this.stats && this.stats.updateCount(`RouteResolutionsFor:${this.hostname}`, 1)
 
     url = url || '/';
+
+    /**
+     * This is a hack.
+     * 
+     * If we are looking for the LetsEncrypt server, pass back an uregistered Route
+     */
 
     if (this.letsEncrypt && /^\/.well-known\/acme-challenge\//.test(url)) {
 
@@ -398,6 +742,12 @@ export class HttpRouter {
 
       return new Route('/').addTargets(this.letsEncrypt.href, {})
     }
+
+    /**
+     * Look for the first Route that matches the inbound URL
+     * 
+     * Since the Routes are sorted with the longest first, we will find the most accurate match
+     */
 
     return this.routes.find((route) => route.path === '/' || startsWith(url, route.path)) || null
   }

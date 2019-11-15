@@ -1,6 +1,10 @@
 import forge from 'node-forge'
 import { BaseLetsEncryptClient, BaseLetsEncryptOptions } from './letsEncrypt'
 
+/**
+ * This is the specific interface for the Self-signed options.
+ */
+
 export interface LetsEncryptSelfSignedOptions extends BaseLetsEncryptOptions {
   country: string
   state: string
@@ -8,21 +12,33 @@ export interface LetsEncryptSelfSignedOptions extends BaseLetsEncryptOptions {
   organizationName: string
 }
 
-const threeMonths = 90 * 24 * 60 * 60 * 1000
+/**
+ * We set the self signed certificate to expire after three months
+ */
+
+const THREE_MONTHS = 90 * 24 * 60 * 60 * 1000
 
 export class LetsEncryptUsingSelfSigned extends BaseLetsEncryptClient {
   private country: string
   private state: string
   private locality: string
   private organizationName: string
+  callCount: number
 
   constructor(options: LetsEncryptSelfSignedOptions) {
+
     super(options)
+
     this.country = options.country
     this.state = options.state
     this.locality = options.locality
     this.organizationName = options.organizationName
+    this.callCount = 0
   }
+
+  /**
+   * This is the method that overrides the base class method
+   */
 
   protected getNewCertificate = async (
     host: string,
@@ -38,7 +54,7 @@ export class LetsEncryptUsingSelfSigned extends BaseLetsEncryptClient {
     certificate.publicKey = keys.publicKey
     certificate.serialNumber = '01'
     certificate.validity.notBefore = new Date()
-    certificate.validity.notAfter = new Date(new Date().valueOf() + threeMonths)
+    certificate.validity.notAfter = new Date(new Date().valueOf() + THREE_MONTHS)
     const attrs = [{
       name: 'commonName',
       value: host
@@ -100,9 +116,11 @@ export class LetsEncryptUsingSelfSigned extends BaseLetsEncryptClient {
     }]);
 
     // self-sign certificate
+  
     certificate.sign(keys.privateKey)
 
     // PEM-format keys and cert
+  
     const pem = {
       privateKey: forge.pki.privateKeyToPem(keys.privateKey),
       publicKey: forge.pki.publicKeyToPem(keys.publicKey),
@@ -110,10 +128,11 @@ export class LetsEncryptUsingSelfSigned extends BaseLetsEncryptClient {
     }
 
     this.stats && this.stats.updateCount('SelfSignedCertificatesRequested', 1)
+  
     this.log && this.log.info(null, 'Certificate created.')
 
     this.certificates.saveCertificateToStore(host, pem.privateKey, pem.certificate)
-    this.certificates.propogateNewCredential(host, pem.privateKey, pem.certificate)
+    this.certificates.propagateNewCertificate(host, pem.privateKey, pem.certificate)
 
     return true
   }

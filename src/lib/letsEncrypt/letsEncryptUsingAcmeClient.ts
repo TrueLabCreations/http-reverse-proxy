@@ -1,5 +1,5 @@
 /** 
- * @namespace LetsEncryptUsingAcmeClient
+ * This is the AcmeClient (https://github.com/publishlab/node-acme-client) implemtation of the Let's Encrypt client
 */
 
 import dns from 'dns'
@@ -8,18 +8,19 @@ import { CsrOptions } from 'acme-client/crypto/forge'
 import { BaseLetsEncryptClient, BaseLetsEncryptOptions } from './letsEncrypt'
 
 /**
- * @interface LetsEncryptServerOptions
- * @property serverInterface {string?} optional network interface for server. default: all interfaces
- * @property serverPort {number?} optional network port to listen on. default: 3000
- * @property certificates {Certificates} in-memory certificate manager
- * @property noVerify {boolean?} optional turn off the internal verification of the token/key with the server
- * @property log {SimpleLogger} optional logging facilty 
+ *  LetsEncryptServerOptions inherits from BaseLetsEncryptOptions
+ * 
+ *  noVerify: optional switch to turn off the internal verification of the token/key with the internal server
+ *      This is to avoid the problem for routers trying to twart the DNS-redis hack
  */
 
 export interface LetsEncryptClientOptions extends BaseLetsEncryptOptions {
   noVerify?: boolean
 }
 
+/**
+ * THe implementation of the Let's Encrypt interface using acme-client
+ */
 export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
 
   protected noVerify: boolean
@@ -30,14 +31,18 @@ export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
     this.noVerify = options.noVerify
   }
 
+  /**
+   * This method overrides the empty method in the base class
+   */
+
   protected getNewCertificate = async (
-    host: string,
+    hostname: string,
     production: boolean,
     email: string): Promise<boolean> => {
 
     this.log && this.log.info(
       {
-        host: host,
+        host: hostname,
         production: production,
         email: email
       },
@@ -47,24 +52,44 @@ export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
 
     this.stats && this.stats.updateCount('AcmeChallengeCertificatesRequested', 1)
 
+    /**
+     * There are a number of steps to the process. See the acme-client documentation.
+     */
+
     const clientOptions: acmeClient.Options = {
       directoryUrl: production ? acmeClient.directory.letsencrypt.production : acmeClient.directory.letsencrypt.staging,
       accountKey: await acmeClient.forge.createPrivateKey(),
       backoffAttempts: 10
     }
 
+    /**
+     * Create an order
+     */
+
     const orderRequest: acmeClient.CreateOrderRequest = {
-      identifiers: [{ type: 'dns', value: host }]
+      identifiers: [{ type: 'dns', value: hostname }]
     }
 
     const client: acmeClient.Client = new acmeClient.Client(clientOptions)
+
+    /**
+     * Create the account on Let's Encrypt
+     */
 
     const account: acmeClient.Account = await client.createAccount({
       termsOfServiceAgreed: true,
       contact: ['mailto:' + email]
     })
 
+    /**
+     * Create the order on Let's Encrypt
+     */
+
     const order: acmeClient.Order = await client.createOrder(orderRequest)
+
+    /**
+     * Get the list of possible challenge types
+     */
 
     const authorizations: acmeClient.Authorization[] = await client.getAuthorizations(order)
 
@@ -72,13 +97,21 @@ export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
 
     const { challenges } = authorization
 
-    let challenge = challenges[0] // .find((challenge) => challenge.type === 'http-01')
+    /**
+     * Work with the first challenge type. It is usually the simplest (http-01)
+     */
+
+    let challenge = challenges[0]
 
     const keyAuthorization: string = await client.getChallengeKeyAuthorization(challenge)
 
     this.log && this.log.info({ ...challenge, key: keyAuthorization }, 'LetsEncryt adding challenge')
 
-    if (! await this.createChallenge(challenge, host, keyAuthorization)) {
+    /**
+     * Update the http-01 or dns-01 challenge response
+     */
+
+    if (! await this.createChallenge(challenge, hostname, keyAuthorization)) {
 
       this.stats && this.stats.updateCount('AcmeChallengeCertificatesFailed', 1)
 
@@ -87,10 +120,18 @@ export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
 
     try {
 
+      /**
+       * Do not verify the challenge locally if the router will block it
+       */
+
       if (!this.noVerify) {
 
         await client.verifyChallenge(authorization, challenge)
       }
+
+      /**
+       * Ask Let's Encrypt to validate the challenge
+       */
 
       await client.completeChallenge(challenge)
 
@@ -109,7 +150,11 @@ export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
 
       try {
 
-        this.destroyChallenge(challenge, host)
+        /**
+         * Remove the challenge response
+         */
+
+        this.destroyChallenge(challenge, hostname)
       }
 
       catch (e) {
@@ -122,22 +167,39 @@ export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
     }
 
     const csrOptions: CsrOptions = {
-      commonName: host
+      commonName: hostname
     }
 
+    /**
+     * Create the certificate signing request and private key
+     */
+
     const [key, csr] = await acmeClient.forge.createCsr(csrOptions)
+
+    /**
+     * Finish the order
+     */
+
     await client.finalizeOrder(order, csr);
+
+    /**
+     *  Get the certificate
+     */
+
     const certificate: string = await client.getCertificate(order);
 
     this.stats && this.stats.updateCount('AcmeChallengeCertificatesSucceeded', 1)
 
-    this.certificates.saveCertificateToStore(host, key.toString(), certificate)
-    this.certificates.propogateNewCredential(host, key.toString(), certificate)
-    // this.certificates.removeCertificate(host)
-    // this.certificates.loadCertificate(host, key.toString(), certificate)
+    /**
+     * Save the certificate locally (so it is available to extract the expiration date)
+     * and propagate it to the other workers in the cluster
+     */
+
+    this.certificates.saveCertificateToStore(hostname, key.toString(), certificate)
+    this.certificates.propagateNewCertificate(hostname, key.toString(), certificate)
 
     this.log && this.log.info({
-      host: host,
+      host: hostname,
       production: production,
       email: email
     },
@@ -146,11 +208,19 @@ export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
     return true
   }
 
+  /**
+   * Helper method to create the challenge response
+   */
+
   protected createChallenge = async (
 
     challenge: Challenge,
     host: string,
     keyAuthorization: string): Promise<boolean> => {
+
+    /** 
+     * Helper function to wait for the DNS servers to update 
+     */
 
     const waitForNamseServerToUpdate = async (attempts: number): Promise<boolean> => {
 
@@ -197,13 +267,25 @@ export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
 
       case 'dns-01':
 
+        /**
+         * Make sure we have a dnsChallenge implementation to work with
+         */
+
         if (this.dnsChallenge) {
 
           this.stats && this.stats.updateCount('AcmeDNSChallengesRequested', 1)
 
+          /**
+           * Add the challenge to the DNS server
+           */
+
           if (await this.dnsChallenge.addAcmeChallengeToDNS(host.replace(/\*\./g, ''), keyAuthorization)) {
 
             if (this.dnsNameServer) {
+
+              /**
+               * Wait for the servers to update
+               */
 
               if (await waitForNamseServerToUpdate(5)) {
 
@@ -231,6 +313,10 @@ export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
         return false
     }
   }
+
+  /**
+   * Remove the challenge response
+   */
 
   protected destroyChallenge = async (
     challenge: Challenge,

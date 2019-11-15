@@ -2,10 +2,10 @@ import colors from 'colors/safe'
 
 const log = (type: string, color: (value:string) => string, data: {} | null, message: string) => {
   if (data) {
-    console.log(color(`${type}: ${JSON.stringify(data)}: ${message}`))
+    console.log(color(`${type}: ${JSON.stringify({time: new Date().toLocaleString(), ...data})}: ${message}`))
   }
   else {
-    console.log(color (`${type}: ${message}`))
+    console.log(color (`${type}: ${{time:new Date().toLocaleString()}} ${message}`))
   }
 }
 
