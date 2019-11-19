@@ -2,7 +2,7 @@ import http from 'http'
 import cluster from 'cluster'
 import { Certificates, CertificateInformation } from "../certificates";
 import { BaseDNSUpdate } from "../dns/dnsUpdate";
-import { SimpleLogger } from "../../examples/simpleLogger";
+import { Logger } from "../logger";
 import { ClusterMessage } from '../httpReverseProxy';
 import { Statistics } from '../statistics';
 
@@ -25,8 +25,8 @@ export interface BaseLetsEncryptOptions {
   host?: string
   certificates?: Certificates
   dnsChallenge?: BaseDNSUpdate
-  dnsNameServer?: string
-  log?: SimpleLogger
+  // dnsNameServer?: string
+  log?: Logger
   stats?: Statistics
 }
 
@@ -65,8 +65,8 @@ export class BaseLetsEncryptClient {
   protected port: number
   protected httpServer: http.Server
   protected dnsChallenge: BaseDNSUpdate
-  protected dnsNameServer: string
-  protected log: SimpleLogger
+  // protected dnsNameServer: string
+  protected log: Logger
   protected stats: Statistics
   protected outstandingChallenges: HttpChallengeTable
 
@@ -77,7 +77,7 @@ export class BaseLetsEncryptClient {
     this.port = options.port || 3000
     this.httpServer = this.setupLetsEncryptServer()
     this.dnsChallenge = options.dnsChallenge
-    this.dnsNameServer = options.dnsNameServer
+    // this.dnsNameServer = options.dnsNameServer
     this.log = options.log
     this.stats = options.stats
     this.outstandingChallenges = {}

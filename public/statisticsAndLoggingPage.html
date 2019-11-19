@@ -1,0 +1,343 @@
+<html>
+  <head>
+    <title>Http Proxy Statistics/Logging</title>
+    <style>
+      .sectionContainer {
+        display: flex;
+        justify-content: center;
+      }
+      .tableContainer {
+        margin-top: 5px;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        height: 93%;
+        overflow-y: auto;
+      }
+      #statistics {
+        height: 65%;
+      }
+      #logging {
+        height: 30%;
+      }
+      h3 {
+        margin: 0 10px 5px 10px;
+      }
+      button {
+        height: 20px;
+        margin: 0 5px 0 5px;
+      }
+      table {
+        border-collapse: collapse;
+        margin-top: 5px;
+      }
+      tr:nth-child(odd) {
+        background-color: rgb(245, 245, 245);
+      }
+      th {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        padding: 5px;
+        background-color: rgb(158, 185, 204);
+        font-size: 14pt;
+      }
+      td {
+        padding: 5px;
+      }
+      td:nth-child(2),
+      td:nth-child(3) {
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="statistics">
+      <div class="sectionContainer">
+        <button id="startStatisticsButton" onclick="startStatisticsClient()">
+          Start
+        </button>
+        <h3>
+          Http Proxy server statistics
+        </h3>
+        <button
+          id="stopStatisticsButton"
+          onclick="stopStatisticsClient()"
+          disabled="true"
+        >
+          Stop
+        </button>
+      </div>
+
+      <div class="tableContainer">
+        <div id="statisticsOutput"></div>
+      </div>
+    </div>
+
+    <hr />
+
+    <div id="logging">
+      <div class="sectionContainer">
+        <button id="startLoggingButton" onclick="startLoggingClient()">
+          Start
+        </button>
+
+        <h3>
+          Http Proxy log
+        </h3>
+        <button
+          id="stopLoggingButton"
+          onclick="stopLoggingClient()"
+          disabled="true"
+        >
+          Stop
+        </button>
+      </div>
+
+      <div class="tableContainer">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Level</th>
+              <th>Message</th>
+              <th>Data</th>
+            </tr>
+          </thead>
+          <tbody id="loggingOutput"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      let statisticsWS = null;
+      let loggingWS = null;
+      let priorEvents = {};
+
+      function startStatisticsClient() {
+        if (!statisticsWS) {
+          startStatisticsWebsocket();
+        }
+      }
+
+      function stopStatisticsClient() {
+        if (statisticsWS) {
+          statisticsWS.send(`{"command": "stop"}`);
+        }
+      }
+
+      function startLoggingClient() {
+        if (!loggingWS) {
+          startLoggingWebsocket();
+        }
+      }
+
+      function stopLoggingClient() {
+        if (loggingWS) {
+          loggingWS.send(`{"command": "stop"}`);
+        }
+      }
+
+      function buildEventTable(events) {
+        const eventTable = {};
+        const workerIds = [];
+
+        Object.keys(events).forEach(property => {
+          const workerId = Number(property.match(/^\d+/)[0]);
+          const name = property
+            .replace(/^\d+:/, "")
+            .replace(/[A-Z]/g, c => ` ${c}`)
+            .replace(/:/g, ": ")
+            .trim();
+
+          if (!eventTable[name]) {
+            eventTable[name] = {};
+          }
+
+          eventTable[name][workerId] = events[property];
+
+          if (workerIds.indexOf(workerId) < 0) {
+            workerIds.push(workerId);
+          }
+        });
+
+        return {
+          workerIds: workerIds.sort((a, b) => a - b),
+          eventTable: eventTable
+        };
+      }
+
+      function buildWorkerColumns(eventEntry, priorEntry, workerIds) {
+        let total = 0;
+        let delta = 0;
+        const columns = [];
+
+        workerIds.forEach(workerId => {
+          const fields = ["<td>"];
+
+          if (eventEntry[workerId]) {
+            fields.push(eventEntry[workerId]);
+
+            total += eventEntry[workerId];
+
+            fields.push("/");
+
+            if (priorEntry && priorEntry[workerId]) {
+              fields.push(eventEntry[workerId] - priorEntry[workerId]);
+              delta += eventEntry[workerId] - priorEntry[workerId];
+            } else {
+              fields.push(eventEntry[workerId]);
+            }
+          }
+          fields.push("</td>");
+
+          columns.push(fields.join(""));
+        });
+
+        columns.unshift(`<td>${total}/${delta}</td>`);
+
+        return columns.join("");
+      }
+
+      function startStatisticsWebsocket() {
+        statisticsWS = new WebSocket(
+          `ws://${window.location.hostname}:${window.location.port}${window.location.pathname}`
+        );
+
+        statisticsWS.onopen = event => {
+          statisticsWS.send(`{"command": "start"}`);
+          document.getElementById("startStatisticsButton").disabled = true;
+          document.getElementById("stopStatisticsButton").disabled = false;
+        };
+
+        statisticsWS.onmessage = event => {
+          el = document.getElementById("statisticsOutput");
+
+          if (el) {
+            const { workerIds, eventTable } = buildEventTable(
+              JSON.parse(event.data)
+            );
+            const names = Object.keys(eventTable).sort();
+
+            rows = names
+              .map(
+                (name, index) =>
+                  `<tr><td>${name}</td>${buildWorkerColumns(
+                    eventTable[name],
+                    priorEvents[name],
+                    workerIds
+                  )}</tr>`
+              )
+              .join("");
+
+            el.innerHTML =
+              `<table><thead><tr><th>Metric</th><th>Total</th>${workerIds
+                .map(
+                  workerId =>
+                    "<th>" +
+                    (workerId === 0
+                      ? "Master"
+                      : workerId < 10
+                      ? "0" + workerId.toString()
+                      : workerId) +
+                    "</th>"
+                )
+                .join("")}
+                </tr></thead><tbody>` +
+              rows +
+              "</tbody></table>";
+            priorEvents = eventTable;
+          }
+        };
+
+        statisticsWS.onerror = event => {
+          alert(`Websocket error. Target ${event.message}`);
+          statisticsWS = null;
+        };
+
+        statisticsWS.onclose = event => {
+          statisticsWS = null;
+          document.getElementById("startStatisticsButton").disabled = false;
+          document.getElementById("stopStatisticsButton").disabled = true;
+        };
+      }
+
+      function startLoggingWebsocket() {
+        /**
+         * Computing the port is a hack for now
+         * (or maybe forever)
+         */
+        loggingWS = new WebSocket(
+          `ws://${window.location.hostname}:${parseInt(window.location.port) +
+            1}${window.location.pathname}`
+        );
+
+        loggingWS.onopen = event => {
+          document.getElementById("startLoggingButton").disabled = true;
+          document.getElementById("stopLoggingButton").disabled = false;
+        };
+
+        loggingWS.onmessage = event => {
+          tBody = document.getElementById("loggingOutput");
+
+          if (tBody) {
+            const logEntry = JSON.parse(event.data);
+            let color;
+            switch (logEntry.level) {
+              case "debug":
+                color = "green";
+                break;
+
+              case "trace":
+                color = "orange";
+                break;
+
+              case "info":
+                color = "black";
+                break;
+
+              case "warn":
+                color = "purple";
+                break;
+
+              case "error":
+                color = "red";
+                break;
+
+              case "fatal":
+                color = "red";
+                break;
+
+              default:
+                color = "red";
+                break;
+            }
+
+            const row = tBody.insertRow(0);
+            let column = row.insertCell(0);
+            column.innerHTML = `<span style="color: ${color}">${new Date().toLocaleString()}</span>`;
+            column = row.insertCell(1);
+            column.innerHTML = `<span style="color: ${color}">${logEntry.level}</span>`;
+            column = row.insertCell(2);
+            column.innerHTML = `<span style="color: ${color}">${logEntry.message}</span>`;
+            column = row.insertCell(3);
+            column.innerHTML = `<span style="color: ${color}">${
+              logEntry.data ? JSON.stringify(logEntry.data) : ""
+            }</span>`;
+          }
+        };
+
+        loggingWS.onerror = event => {
+          alert(`Websocket error. Target ${event.message}`);
+          loggingWS = null;
+        };
+
+        loggingWS.onclose = event => {
+          loggingWS = null;
+          document.getElementById("startLoggingButton").disabled = false;
+          document.getElementById("stopLoggingButton").disabled = true;
+        };
+      }
+    </script>
+  </body>
+</html>

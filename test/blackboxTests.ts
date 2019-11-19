@@ -90,10 +90,3 @@ else {
 
   console.log('usage: node blackboxTests.js all [httpIterations [websocketIterations]] | http [iterations] | web [iterations] | servers  | proxy')
 }
-
-
-/**
- * HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters
- *
- * TcpTimedWaitDelay=30
- */

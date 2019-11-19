@@ -9,7 +9,7 @@ import {
   RegistrationHttpsOptions,
   RouteRegistrationOptions,
   LetsEncryptUsingSelfSigned,
-  SimpleLogger,
+  Logger,
   RegistrationLetsEncryptOptions
 } from '../index'
 
@@ -36,7 +36,6 @@ const letsEncryptSelfSignedOptions: LetsEncryptSelfSignedOptions = {
   country: 'US',
   state: 'Georgia',
   locality: 'Roswell',
-  // certificates: new Certificates({ certificateStoreRoot: '..\\certificates' }),
 }
 
 
@@ -45,7 +44,6 @@ const httpProxyOptions: HttpReverseProxyOptions = {
   proxyOptions: {
 
     xfwd: false,
-    // agent: false,
   },
 
   httpsOptions: {
@@ -55,7 +53,7 @@ const httpProxyOptions: HttpReverseProxyOptions = {
 
   letsEncryptOptions: letsEncryptSelfSignedOptions,
 
-  // log: new SimpleLogger(),
+  log: new Logger(),
 
   stats: statistics
 }
@@ -107,4 +105,3 @@ export const stopProxy = () => {
   proxy && proxy.close()
   statisticsServer && statisticsServer.stop()
 }
-

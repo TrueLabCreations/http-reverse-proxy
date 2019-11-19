@@ -218,46 +218,6 @@ export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
     host: string,
     keyAuthorization: string): Promise<boolean> => {
 
-    /** 
-     * Helper function to wait for the DNS servers to update 
-     */
-
-    const waitForNamseServerToUpdate = async (attempts: number): Promise<boolean> => {
-
-      while (attempts > 0) {
-
-        try {
-
-          const resolve = new dns.promises.Resolver()
-          resolve.setServers([this.dnsNameServer])
-
-          const result = await resolve.resolveTxt(`_acme-challenge.${host.replace(/\*\./g, '')}`)
-          const records = [].concat(...result)
-
-          if (records.indexOf(keyAuthorization) >= 0)
-
-            return true
-        }
-
-        catch (e) { }
-
-        finally {
-
-          if (--attempts > 0) {
-
-            await new Promise((resolve) => {
-
-              setTimeout(() => {
-                resolve()
-              }, 3000)
-
-            })
-          }
-        }
-      }
-      return false
-    }
-
     switch (challenge.type) {
 
       case 'http-01':
@@ -279,26 +239,11 @@ export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
            * Add the challenge to the DNS server
            */
 
-          if (await this.dnsChallenge.addAcmeChallengeToDNS(host.replace(/\*\./g, ''), keyAuthorization)) {
+          if (await this.dnsChallenge.addDNSChallenge(host, keyAuthorization)) {
 
-            if (this.dnsNameServer) {
+            this.stats && this.stats.updateCount('AcmeDNSChallengesWritten', 1)
 
-              /**
-               * Wait for the servers to update
-               */
-
-              if (await waitForNamseServerToUpdate(5)) {
-
-                this.stats && this.stats.updateCount('AcmeDNSChallengesWritten', 1)
-
-                this.log && this.log.info(null, `DNS challenge resolved from ${this.dnsNameServer}`)
-                return true
-              }
-            }
-            else {
-
-              return true
-            }
+            return true
           }
         }
 
@@ -332,7 +277,7 @@ export class LetsEncryptUsingAcmeClient extends BaseLetsEncryptClient {
       case 'dns-01':
 
         return this.dnsChallenge &&
-          await this.dnsChallenge.removeAcmeChallengeFromDNS(host.replace(/\*\./g, ''))
+          await this.dnsChallenge.removeDNSChallenge(host)
 
       default:
 

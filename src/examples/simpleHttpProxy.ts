@@ -2,21 +2,26 @@ import { HttpReverseProxy } from '../lib/httpReverseProxy'
 import { SimpleHttpServer } from './simpleHttpServer'
 import { Statistics } from '../lib/statistics'
 import { StatisticsServer, StatisticsServerOptions } from '../lib/statisticsServer'
-import { SimpleLogger } from './simpleLogger'
+import { Logger } from '../lib/logger'
 
 const stats = new Statistics()
 
 const statisticsServerOptions: StatisticsServerOptions = {
 
   stats: stats,
-  htmlFilename: './public/statisticsPage.html'
+  htmlFilename: './public/statisticsAndLoggingPage.html'
 }
 
 const server1 = new SimpleHttpServer(1, 8001)
 const server2 = new SimpleHttpServer(2, 8002)
 
 const statisticsServer = new StatisticsServer(statisticsServerOptions)
-const logger = new SimpleLogger()
+const logger = new Logger(
+  {
+    port: 3002,
+    logLevel: 10
+  }
+)
 
 logger.warn(null,
   `SimpleHttpProxy:

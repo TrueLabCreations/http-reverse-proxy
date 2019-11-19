@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { SimpleLogger } from '../../examples/simpleLogger'
+import { Logger } from '../logger'
 import  { BaseDNSUpdate, BaseDNSUpdateOptions } from './dnsUpdate'
 
 interface DNSEntry {
@@ -31,7 +31,7 @@ export class GoDaddyDNSUpdate extends BaseDNSUpdate{
 
   private apiKey: string
   private secret: string
-  protected log: SimpleLogger
+  protected log: Logger
 
   constructor(options: GoDaddyDNSUpdateOptions) {
 

@@ -53,5 +53,5 @@ export {
 } from './src/lib/util'
 
 export { SimpleHttpServer } from "./src/examples/simpleHttpServer"
-export { SimpleLogger } from "./src/examples/simpleLogger"
+export { Logger } from "./src/lib/logger"
 

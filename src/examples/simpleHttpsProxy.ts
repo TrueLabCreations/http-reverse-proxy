@@ -4,10 +4,10 @@ import { LetsEncryptUsingSelfSigned, LetsEncryptSelfSignedOptions } from '../lib
 import { RouteRegistrationOptions } from '../lib/httpRouter'
 import { Statistics } from '../lib/statistics'
 import { StatisticsServer, StatisticsServerOptions } from '../lib/statisticsServer'
-import { SimpleLogger } from './simpleLogger'
+import { Logger } from '../lib/logger'
 
 const stats = new Statistics()
-const logger = new SimpleLogger()
+const logger = new Logger()
 
 const statisticsServerOptions: StatisticsServerOptions = {
 

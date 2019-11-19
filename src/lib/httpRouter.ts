@@ -2,7 +2,7 @@ import http from 'http'
 import httpProxy from 'http-proxy'
 import path from 'path'
 import { Certificates } from './certificates';
-import { SimpleLogger } from '../examples/simpleLogger'
+import { Logger } from './logger'
 import { BaseLetsEncryptClient } from './letsEncrypt/letsEncrypt';
 import {
   ProxyUrl,
@@ -89,7 +89,7 @@ export interface HttpRouterOptions {
   https?: RegistrationHttpsOptions  // Options for hadling https requests
   redirectPort?: number             // Port to redirect https requests
   letsEncrypt?: BaseLetsEncryptClient,  // Instance of LetsEncrypt client
-  log?: SimpleLogger
+  log?: Logger
   stats?: Statistics
 }
 
@@ -115,7 +115,7 @@ export class HttpRouter {
   protected certificates: Certificates
   protected https: RegistrationHttpsOptions
   protected letsEncrypt: BaseLetsEncryptClient
-  protected log: SimpleLogger
+  protected log: Logger
   protected stats: Statistics
   protected redirectPort: number
   protected routes: Route[]
@@ -265,7 +265,7 @@ export class HttpRouter {
       route.removeTargets(to)
 
       /**
-       * IF the Route has no targets, remove the Route
+       * If the Route has no targets, remove the Route
        */
 
       if (route.noTargets()) {
@@ -288,6 +288,14 @@ export class HttpRouter {
 
   public noRoutes = (): boolean => {
     return this.routes.length === 0
+  }
+
+  public closeRoute = () =>{
+
+    if (this.certificateTimer){
+          
+      this.certificateTimer.clearTimer()
+    }
   }
 
   /**

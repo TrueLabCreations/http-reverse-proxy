@@ -1,5 +1,5 @@
 import { ProxyUrl, makeUrl } from "./util"
-import { SimpleLogger } from "../examples/simpleLogger"
+import { Logger } from "./logger"
 import { RouteRegistrationOptions } from "./httpRouter"
 import { Statistics } from "./statistics"
 
@@ -15,14 +15,14 @@ export class Route {
   public path: string
   protected roundRobin: number
   public targets: ProxyUrl[]
-  protected log: SimpleLogger
+  protected log: Logger
   protected stats: Statistics
 
   /**
    * At a minimum a Route has the inbound path '/'
    */
 
-  constructor(path: string, log?: SimpleLogger, stats?: Statistics) {
+  constructor(path: string, log?: Logger, stats?: Statistics) {
 
     this.path = path
     this.log = log

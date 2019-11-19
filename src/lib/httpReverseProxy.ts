@@ -9,7 +9,7 @@ import { Certificates, CertificateOptions, CertificateMessage } from './certific
 import { BaseLetsEncryptClient, BaseLetsEncryptOptions, LetsEncryptMessage } from './letsEncrypt/letsEncrypt'
 import { LetsEncryptUsingAcmeClient, LetsEncryptClientOptions } from './letsEncrypt/letsEncryptUsingAcmeClient'
 import { HttpRouter, ExtendedIncomingMessage, RouteRegistrationOptions, HttpRouterOptions } from './httpRouter'
-import { SimpleLogger } from '../examples/simpleLogger'
+import { Logger, LoggingMessage } from './logger'
 import { ProxyUrl, makeUrl, respondNotFound } from './util'
 import { Statistics, StatisticsMessage } from './statistics'
 
@@ -47,7 +47,7 @@ export interface HttpReverseProxyOptions {
   clustered?: boolean | number        // Set up a clustered enviroment
   letsEncryptOptions?: BaseLetsEncryptOptions // Global options for the lets enrypt server
   preferForwardedHost?: boolean       // Should the proxy use the hostname or the x-farwarded host name
-  log?: SimpleLogger | null
+  log?: Logger | null
   stats?: Statistics
 }
 
@@ -118,7 +118,7 @@ export class HttpReverseProxy {
   protected certificates: Certificates
   protected letsEncrypt: BaseLetsEncryptClient
   protected routers: HttpRouters
-  protected log: SimpleLogger
+  protected log: Logger
   protected stats: Statistics
 
   /**
@@ -200,7 +200,7 @@ export class HttpReverseProxy {
   /**
    * Helper Method to handle messages from the workers
    * 
-   * Messages are used to keep statitics and the state of the certificates and challenges in sync
+   * Messages are used for logging and the state of the statistics, certificates, and challenges in sync
    */
 
   private handleWorkerMessage = (worker: cluster.Worker, message: ClusterMessage) => {
@@ -213,10 +213,8 @@ export class HttpReverseProxy {
 
       case 'statistics':
 
-        if (this.stats) {
+        this.stats && this.stats.processMessage(message as StatisticsMessage)
 
-          this.stats.processMessage(message as StatisticsMessage)
-        }
 
         break
 
@@ -233,6 +231,12 @@ export class HttpReverseProxy {
         }
 
         break
+
+      case 'logging':
+
+        this.log && this.log.processMessage(message as LoggingMessage)
+
+        break;
 
       default:
 
@@ -507,6 +511,8 @@ export class HttpReverseProxy {
        * Remove the HttpRouter from the table
        */
 
+      this.routers[from.hostname].closeRoute()
+
       delete this.routers[from.hostname]
 
       this.certificates && this.certificates.removeCertificate(from.hostname)
@@ -648,8 +654,8 @@ export class HttpReverseProxy {
          * Get the host name from the request and use it to find the proper router
          */
 
-        const hostName = this.getInboundHostname(req);
-        const router = this.routers[hostName]
+        const hostname = this.getInboundHostname(req);
+        const router = this.routers[hostname]
 
         if (router) {
 
@@ -667,7 +673,7 @@ export class HttpReverseProxy {
 
           respondNotFound(req, res)
 
-          this.log && this.log.warn({ url: req.url }, "Missing route")
+          this.log && this.log.warn({ host: hostname, url: req.url }, "Missing route")
 
           this.stats && this.stats.updateCount('HttpMissingRoutes', 1)
         }
@@ -952,6 +958,11 @@ export class HttpReverseProxy {
         this.server.close()
         this.httpsServer && this.httpsServer.close()
         this.letsEncrypt && this.letsEncrypt.close()
+
+        for (const router in this.routers) {
+
+          this.routers[router].closeRoute()
+        }
       }
     } catch (err) {
       // Ignore for now...

@@ -3,7 +3,7 @@ import cluster from 'cluster'
 import fs from "fs"
 import path from 'path'
 import forge from 'node-forge'
-import { SimpleLogger } from "../examples/simpleLogger";
+import { Logger } from "./logger";
 import { Statistics } from "./statistics";
 import { ClusterMessage } from "./httpReverseProxy";
 
@@ -18,7 +18,7 @@ import { ClusterMessage } from "./httpReverseProxy";
 
 export interface CertificateOptions {
   certificateStoreRoot: string
-  log?: SimpleLogger
+  log?: Logger
   stats?: Statistics
 }
 
@@ -73,7 +73,7 @@ export class Certificates {
 
   private certificateStoreRoot: string;
   protected certificates: ActiveCertificates = {}
-  protected log: SimpleLogger
+  protected log: Logger
   protected stats: Statistics
 
   constructor(options: CertificateOptions) {

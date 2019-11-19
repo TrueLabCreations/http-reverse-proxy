@@ -3,17 +3,31 @@ import net from 'net'
 import fs from 'fs'
 import WebSocket from 'ws'
 import { Statistics } from './statistics'
-import { makeUrl, respondNotFound } from './util'
+import { respondNotFound } from './util'
+import { Logger } from './logger'
+
+/**
+ * Configuration options for the http server started by
+ * the Statistics server
+ */
 
 export interface StatisticsServerHttpOptions {
   host?: string
   port: number
 }
 
+/**
+ * Configuration options for the Websocket interface to the Statistics server
+ */
+
 export interface StatisticsServerWebsocketOptions {
   updateInterval?: number
   filter?: string[]
 }
+
+/**
+ * Configuration options for the statistics server
+ */
 
 export interface StatisticsServerOptions {
   stats: Statistics
@@ -21,7 +35,16 @@ export interface StatisticsServerOptions {
   htmlFilename?: string
   http?: StatisticsServerHttpOptions
   websocket?: StatisticsServerWebsocketOptions
+  log?: Logger
 }
+
+/**
+ * The statistics server is started with an instance of the Statistics class.
+ * This is most often a singleton class created in the root of the proxy startup
+ * code. Statistics entries are updated in the Statistics object.
+ * The Statistics server sends to current state of the Statistics instance to
+ * out to the clients via a websocket interface
+ */
 
 export class StatisticsServer {
 
@@ -33,6 +56,7 @@ export class StatisticsServer {
   private httpServer: http.Server
   private websocketServer: WebSocket.Server
   private stats: Statistics
+  private log: Logger
 
   constructor(options: StatisticsServerOptions) {
 
@@ -50,15 +74,20 @@ export class StatisticsServer {
     }
   }
 
+  /**
+   * Extract the option information from the statistics options
+   */
+
   private setOptions = (options: StatisticsServerOptions) => {
 
     if (options) {
 
       this.stats = options.stats
       this.port = 3001
-      this.htmlFilename = '../../public/statisticsPage.html'
+      this.htmlFilename = './public/statisticsAndLoggingPage.html'
       this.updateInterval = 5000
       this.htmlFilename = options.htmlFilename || this.htmlFilename
+      this.log = options.log
 
       if (options.http) {
 
@@ -74,6 +103,12 @@ export class StatisticsServer {
     }
   }
 
+  /**
+   * The statistics server can be created and started in a single step or the
+   * server can be started later in the overall startup process with additional/
+   * changed options
+   */
+
   public start = (options?: StatisticsServerOptions) => {
 
     this.stop()
@@ -83,6 +118,10 @@ export class StatisticsServer {
     this.createHttpServer()
     this.createWebsocketServer()
   }
+
+  /**
+   * Stop the statistics server. It can be restarted again.
+   */
 
   public stop = () => {
 
@@ -98,6 +137,10 @@ export class StatisticsServer {
       this.websocketServer.close()
     }
   }
+
+  /**
+   * Start the Statistics server http server
+   */
 
   private createHttpServer = () => {
 
@@ -129,11 +172,16 @@ export class StatisticsServer {
     })
 
     this.httpServer.on('listening', () => {
-      console.log(`info: ${JSON.stringify(this.httpServer.address())} Statistics server started`)
+      
+      this.log && this.log.info(this.httpServer.address(), `Statistics server started`)
     })
 
     this.httpServer.listen(this.port, this.host)
   }
+
+  /**
+   * Respond to the connections to websocket server
+   */
 
   private createWebsocketServer = () => {
 
@@ -167,11 +215,19 @@ export class StatisticsServer {
         ws.close()
       }
 
+      /**
+       * Process timer expirations. Send out the set of statistics processed through the filters.
+       */
+
       const processUpdate = () => {
 
         if (this.stats) {
 
           const table = this.stats.getTable()
+
+          /**
+           * If there is a filter use it. Otherwise send everything
+           */
 
           if (this.filter && Array.isArray(this.filter) && this.filter.length) {
 
@@ -179,6 +235,11 @@ export class StatisticsServer {
             const result = {}
 
             for (const property of properties) {
+
+              /**
+               * Filtering is based on matching a filter to the start of the statistics name.
+               * The workerId is skipped before the match is checked
+               */
 
               if (this.filter.find((filter) => property.substr(property.indexOf(':') + 1, filter.length) === filter)) {
 
@@ -196,6 +257,12 @@ export class StatisticsServer {
       }
 
       ws.on('open', handleOpen)
+
+      /**
+       * Handle messages from the websocket client.
+       * Client can start or stop the sending of data,
+       * change the update interval or set the filters
+       */
 
       ws.on('message', (message: string) => {
 

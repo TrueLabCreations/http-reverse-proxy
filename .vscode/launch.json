@@ -4,6 +4,7 @@
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
+
     {
       "type": "node",
       "request": "attach",
@@ -19,11 +20,33 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Run Http example",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "program": "${workspaceFolder}/src/examples/simpleHttpProxy.ts",
+      "outFiles": ["${workspaceFolder}/dist/src/examples/*.js"],
+      "cwd": "${workspaceFolder}/"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Run Https example",
       "env": {
         "NODE_ENV": "development"
       },
       "program": "${workspaceFolder}/src/examples/simpleHttpsProxy.ts",
+      "outFiles": ["${workspaceFolder}/dist/src/examples/*.js"],
+      "cwd": "${workspaceFolder}/"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Run clustered example",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "program": "${workspaceFolder}/src/examples/clusteredProxy.ts",
       "outFiles": ["${workspaceFolder}/dist/src/examples/*.js"],
       "cwd": "${workspaceFolder}/"
     },

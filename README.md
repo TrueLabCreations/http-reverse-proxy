@@ -2,13 +2,11 @@
 
 ## Installation
 
-If you already have nodjs and vsCode installed then the package can be installed from npm via
+If you already have nodejs and npm installed then the package can be installed from npm via
 
 ```
 npm install --save http-reverse-proxy-ts
 ```
-
-There are more in-depth installation instructions [here](#setting-it-all-up-from-scratch).
 
 ## Running a simple http reverse proxy server
 
@@ -16,8 +14,8 @@ For this simple test you need a couple of entries in the hosts file:
 
 ```
 # add host entries for testing
-127.0.0.1  server1.test.com
-127.0.0.1  server2.test.com
+127.0.0.1  server1.qzqzqz.com
+127.0.0.1  server2.qzqzqz.com
 ```
 
 A good tutorial for editing the hosts file on most common system types can be found [here](https://www.howtogeek.com/howto/27350/beginner-geek-how-to-edit-your-hosts-file/)
@@ -57,8 +55,8 @@ server2.start()
 
 const proxy = new HttpReverseProxy({ stats: stats, log: logger })
 
-proxy.addRoute('http://server1.test.com', 'localhost:8001')
-proxy.addRoute('http://server2.test.com', 'localhost:8002')
+proxy.addRoute('http://server1.qzqzqz.com', 'localhost:8001')
+proxy.addRoute('http://server2.qzqzqz.com', 'localhost:8002')
 
 logger.info(null,'Proxy server started')
 
@@ -95,8 +93,8 @@ server2.start()
 
 const proxy = new HttpReverseProxy({ stats: stats, log: logger })
 
-proxy.addRoute('http://server1.test.com', 'localhost:8001')
-proxy.addRoute('http://server2.test.com', 'localhost:8002')
+proxy.addRoute('http://server1.qzqzqz.com', 'localhost:8001')
+proxy.addRoute('http://server2.qzqzqz.com', 'localhost:8002')
 
 logger.info(null,'Proxy server started')
 ```
@@ -111,16 +109,20 @@ Run the project from a command prompt in the directory containing the `index.js`
 node index.js
 ```
 
-If you want to view the statistics from the server you will need to copy the the file 'statisticsPage.html' from the public folder of the package (in node_modules) to a public folder at the root of your project. The statistics server defaults to localhost:3001.
+If you want to view the statistics from the [server](#statistics) you will need to copy the the file 'statisticsPage.html' from the `public` folder of the package (in node_modules) to a `public` folder at the root of your project. The statistics server defaults to localhost:3001.
 
 In the browser address bar on the same machine type:
-http://server1.test.com
+http://server1.qzqzqz.com
 
 This should bring up the hello message from server1.
 
-Change the address to http://server2.test.com and the second server should respond.
+Change the address to http://server2.qzqzqz.com and the second server should respond.
 
 You are now running a reverse proxy sharing a single front end ip address (port 80) and routing requests to two applications.
+
+Change the address to http://localhost:3001 to view the statistics.
+
+If you can add another route: `proxy.addRoute('server1.qzqzqz.com/statistics', 'localhost:3001') the statistics can be viewed via the address http://server1.qzqzqz.com/statistics.
 
 ## Running a simple secure HTTPS server
 
@@ -214,8 +216,8 @@ server2.start()
 
 const proxy = new HttpReverseProxy(httpReverseProxyOptions, LetsEncryptUsingSelfSigned)
 
-proxy.addRoute('https://server1.test.com', 'localhost:8001', routingOptions)
-proxy.addRoute('https://server2.test.com', 'localhost:8002', routingOptions)
+proxy.addRoute('https://server1.qzqzqz.com', 'localhost:8001', routingOptions)
+proxy.addRoute('https://server2.qzqzqz.com', 'localhost:8002', routingOptions)
 
 logger.info(null, 'Https Reverse Proxy server started')
 
@@ -293,8 +295,8 @@ server2.start()
 
 const proxy = new HttpReverseProxy(httpReverseProxyOptions, LetsEncryptUsingSelfSigned)
 
-proxy.addRoute('https://server1.test.com', 'localhost:8001', routingOptions)
-proxy.addRoute('https://server2.test.com', 'localhost:8002', routingOptions)
+proxy.addRoute('https://server1.qzqzqz.com', 'localhost:8001', routingOptions)
+proxy.addRoute('https://server2.qzqzqz.com', 'localhost:8002', routingOptions)
 
 logger.info(null, 'Https Reverse Proxy server started')
 ```
@@ -307,7 +309,7 @@ run locally.
 The routes are configured to force an http connection from the browser to be redirected to an https
 connection on the proxy.
 
-At startup the proxy will request the generation of the certificates for server1.test.com and server2.test.com. 
+At startup the proxy will request the generation of the certificates for server1.qzqzqz.com and server2.qzqzqz.com. 
 These certificates will will give you a warning in the browser. 
 
 The certificates will be stored
@@ -317,28 +319,28 @@ certificate store will be:
 ```
 {certificateStoreRoot}
   |
-  |-> server1_test_com
+  |-> server1_qzqzqz_com
   | |
-  | |- server1_test_com-crt.pem
-  | |- server1_test_com-key.pem
+  | |- server1_qzqzqz_com-crt.pem
+  | |- server1_qzqzqz_com-key.pem
   |
-  |-> server2_test_com
+  |-> server2_qzqzqz_com
     |
-    |- server2_test_com-crt.pem
-    |- server2_test_com-key.pem
+    |- server2_qzqzqz_com-crt.pem
+    |- server2_qzqzqz_com-key.pem
 ```
 
 Compile and run the Typescript project or just run the Javascript version.
 
 In the browser address bar on the same machine type:
-http://server1.test.com
+http://server1.qzqzqz.com
 
 The browser should be redirected to an https connection. This connection should display an error in the browser 
 stating that the connection is not secure.Select the option to open the page anyway (this varies by prowser).
 
 This should bring up the hello message from server1.
 
-Change the address to http://server2.test.com and after being redirected and accepting the insecure certificates 
+Change the address to http://server2.qzqzqz.com and after being redirected and accepting the insecure certificates 
 the second server should respond.
 
 You are now running a (somewhat) secure reverse proxy sharing a single front end ip address (port 443).
@@ -350,6 +352,11 @@ servers that are outside of your control the connection on the back side should 
 ---
 
 ## Running a Let's Encrypt secure proxy
+
+To test the retrieval of certificates from Let's Encrypt, you need a hostname pointed to your ip-address (the network side of the router). You also need to instruct your router to forward packets arriving on port 80 and port 443 to your local system. A starting point can be found [here](https://www.howtogeek.com/66214/how-to-forward-ports-on-your-router/)
+
+You can obtain a temporary host name from  sites like [no-ip](https://www.noip.com/remote-access) or [DysDNS](https://dyn.com/remote-access/). I am sure there a many others.
+
 
 > Typescript
 
@@ -435,6 +442,7 @@ proxy.addRoute(hostname, 'localhost:8002', routingOptions) // round robin betwee
 
 logger.info({hostname: hostname}, 'Https Lets Encrypt Test Proxy started')
 ```
+[HttpReverseProxyOptions](#http-server-options) | [LetsEncryptClientOptions](#lets-encrypt-options) | [RouteRegistrationOptions](#route-registration-options) | [StatisticsServerOptions](#statistics-server-options)
 
 > Javascript
 
@@ -514,17 +522,13 @@ proxy.addRoute(hostname, "localhost:8002", routingOptions); // round robin betwe
 
 logger.info({ hostname: hostname }, "Https Lets Encrypt Test Proxy started");
 ```
-To test the retrieval of certificates from Let's Encrypt, you need a hostname pointed to your ip-address (the network side of the router). You also need to instruct your router to forward packets arriving on port 80 and port 443 to your local system. A starting point can be found [here](https://www.howtogeek.com/66214/how-to-forward-ports-on-your-router/)
-
-You can obtain a temporary host name from  sites like [no-ip](https://www.noip.com/remote-access) or [DysDNS](https://dyn.com/remote-access/). I am sure there a many others.
-
 Once the ground-work is laid, replace `<Your Host Name>` with your registered hostname. Compile and run the project.
 
 The proxy will start and request a certificate for your hostname. This certificate will not be backed by a 'certificate authority'. However, Once you have verified the system is working you can change the routingOptions.https.letsEncrypt.production to 'true', delete the old certificates and run it again.
 
 In a manner similar to the prior examples, enter your host name into the browser and you should receive a response from Server1 or Server2. If you have not received a producton certificate you will get the same warning as the self signed certificates.
 
-Sometimes modern routers will not allow you to open a page with the web address of the router. This is an attempt to twart a hack called 'DNS rebinding'. If the browser cannot open the page, try your phone with the wi-fi turned off. 
+Sometimes modern routers will not allow you to open a page with the web address of the router. This is an attempt to twart a hack called `DNS rebinding`. If the browser cannot open the page, try your phone with the wi-fi turned off. 
 
 ---
 
@@ -554,8 +558,8 @@ Both addRoute and removeRoute can be chained in standard `.` notation:
 ```ts
 
 proxy = new HttpReverseProxy ()
-  .addRoute('server1.test.com', 'localhost:8000')
-  .addRoute('server2.test.com', 'localhost:8001')
+  .addRoute('server1.qzqzqz.com', 'localhost:8000')
+  .addRoute('server2.qzqzqz.com', 'localhost:8001')
 
 ```
 # Statistics
@@ -568,7 +572,7 @@ const statistics = new Statistics()
 const statisticsServerOptions: StatisticsServerOptions = {
   stats: statistics,
   http: {
-    port: 4000
+    port: 3001
   },
 
   webSocket: {
@@ -588,10 +592,10 @@ const proxy = new HttpReverseProxy(httpProxyOptions)
 
 // add a route to the proxy to access the statistics server from the outside
 
-proxy.addRoute ('server1.test.com/statistics', 'localhost:4000')
+proxy.addRoute ('server1.qzqzqz.com/statistics', 'localhost:3001')
 ```
 
-This configuration will allow access to the statistics server through 'localhost:4000' or as 'server1.test.com/statistics'.
+This configuration will allow access to the statistics server through 'localhost:3001' or as 'server1.qzqzqz.com/statistics'.
 
 The server does not provide any security.
 
@@ -599,7 +603,7 @@ The Statistics container will collect the statistics as long as the proxy is run
 
 The server will provide the current state of the statistics table through a webSocket interface. The table is sent as a single object in standard JSON format. 
 
-Each key (property) of the object is a measurement point and the value of the property is the current count. The measurement point consists of the workerId (number) followed by a `:` followed by the name. The name portion may also contain additional `:` characters so splitting out the workderId should be done carefully.
+Each key (property) of the object is a measurement point and the value of the property is the current count. The key consists of the workerId (number) followed by a `:` followed by the name. The name portion may also contain additional `:` characters so splitting out the workderId should be done carefully.
 
 The default web page served by the statistics server is read from `./public/statisticsPage.html`. This default page can be overridden by setting the `htmlFilename` in the [StatisticsServerOptions](#statistics-server-options).
 
@@ -692,10 +696,53 @@ Option | Type | Default | Description
 __host__ | string | all | The network interface to listen for http connections. Defaults to all [interfaces](https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback). This would only be used to force the system to listen on a single network. The format is a standard IPV4 or IPV6 network address. This has no relation to a host or hostname in a URL.
 __port__ | number | `3000` | The inbound port used to listen for http connections for the LetsEncrypt local server.
 __certificate__ | [Certificates](#certificates) | httpOptions.certificates | The certificate store for theLetsEncrypt managed certificates.
-__dnsChallenge__ | BaseDNSUpdate | null | For LetsEncrypt registrations that require the use of the dns-01 challenge (i.e. wildcard host names: *.test.com) this is the implementation of the DNS challenge handler for the DNS service. If the challenge handler for the DNS service you use is not provided one must be written to access the DNS and add/remove the appropriate DNS TXT record.
+__dnsChallenge__ | BaseDNSUpdate | null | For LetsEncrypt registrations that require the use of the dns-01 challenge (i.e. wildcard host names: *.qzqzqz.com) this is the implementation of the DNS challenge handler for the DNS service. If the challenge handler for the DNS service you use is not provided one must be written to access the DNS and add/remove the appropriate DNS TXT record.
 __dnsNameServer__ | string | null | After writing the entry to the DNS table, the DNS challenge may verify the entry has been propagated within the cluster of name servers on the service before askting LetsEncrypt to look for it.
 __log__ | object | null | The logging element
 __stats__ | object | null | the Statistics element
+
+## DNS Update Options
+
+The DNS update requires a targeted implementation for each DNS service. The initial release only supports GoDaddy. However, this should provide users with an understanding of the framework required to implement other interfaces.
+
+To facilitate the implementation of other interfaces the DNS update is supported by an abstract base class:
+
+```ts
+export interface BaseDNSUpdateOptions{
+  
+  stats?: Statistics
+  log?:SimpleLogger
+}
+```
+Option | Type | Default | Description
+---|---|---|---
+stats | [Statistics](#statistics) | null | A reference to the Statistics object.
+log | [SimpleLogger](#simple-logger) | null | A reference to a logging object.
+
+The DNS class exposes two abstract methods for managing the update:
+
+```ts
+  abstract async addAcmeChallengeToDNS (domain: string, challenge: string): Promise<boolean>
+  abstract async removeAcmeChallengeFromDNS (domain: string): Promise<boolean>
+```
+
+addAcmeChallengeToDNS should add a DNS TXT record for the domain. 
+---
+## DNS Update Using GoDaddy
+
+The GoDaddy DNS update requires an APIKey and secret. These can be generated viw the developer interface on GoDaddy
+
+```ts
+export interface GoDaddyDNSUpdateOptions extends BaseDNSUpdateOptions {
+
+  APIKey: string
+  secret: string
+}
+```
+Option | Type | Default | Description
+---|---|---|---
+APIKey | string | none | The APIKey generated by GoDaddy
+secret | string | none | The secret generated by GoDaddy. This should not be published in your code.
 
 ___
 ## Route Registration Options
@@ -919,6 +966,4 @@ The resulting requests would have the root ('/api') prepended to the url receive
 ```
 myserver.mydomain.com/getusers => localhost:9001/api/getusers
 ```
-
-## Setting it all up from scratch
 
