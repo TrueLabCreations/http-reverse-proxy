@@ -3,28 +3,39 @@
   "version": "1.0.0",
   "license": "MIT",
   "description": "An Http reverse proxy implementation in Typescript",
+  "engines": {
+    "node": ">=10.17.0"
+  },
   "main": "dist",
   "typings": "dist",
   "scripts": {
-    "test": "node ./dist/test/blackboxTests.js all 100 10",
-    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "clean": "rimraf dist",
+    "build": "npm run clean && tsc -p .",
     "start": "npm run build && node ./dist/src/examples/simpleHttpProxy.js",
+    "test": "node ./dist/test/blackboxTests.js all 100 10",
     "httpsExample": "npm run build && node ./dist/src/examples/simpleHttpsProxy.js",
     "letsEncryptExample": "npm run build && node ./dist/src/examples/letsEncryptProxy.js",
     "clusteredExample": "npm run build && node ./dist/src/examples/clusteredProxy.js"
   },
+  "homepage": "https://github.com/TrueLabCreations/http-reverse-proxy#readme",
+  "bugs": {
+    "url": "https://github.com/TrueLabCreations/http-reverse-proxy/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "git://github.com/BigBangVapeCo/http-reverse-proxy.git"
+    "url": "https://github.com/TrueLabCreations/http-reverse-proxy.git"
   },
   "keywords": [
+    "reverse proxy",
     "proxy",
     "reverse",
     "http",
+    "https",
     "typescript",
     "letsEncrypt"
   ],
-  "author": "True Lab Creations/Tom Swiedler",
+  "author": "True Lab Creations",
   "dependencies": {
     "acme-client": "^3.2.1",
     "colors": "^1.4.0",
@@ -38,12 +49,8 @@
     "@types/node": "^12.12.9",
     "@types/node-forge": "^0.8.7",
     "@types/ws": "^6.0.3",
-    "gulpclass": "^0.2.0",
-    "prettier": "^1.19.1",
-    "ts-node": "^8.5.2",
+    "rimraf": "^3.0.0",
     "tslint": "^5.20.1",
-    "tslint-config-prettier": "^1.18.0",
-    "tslint-plugin-prettier": "^2.0.1",
     "typescript": "^3.7.2"
   }
 }

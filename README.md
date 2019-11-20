@@ -1,5 +1,7 @@
 # HTTP/HTTPS Reverse Proxy
 
+This package implements an http/https reverse proxy. It allows a multiple web services/sites to share a single internet interface (router) and share ports 80 and 443 (or any other ports you use). The goal is to provide a secure, easy to implement, proxy for privately hosted servers.
+
 ## Installation
 
 If you already have nodejs and npm installed then the package can be installed from npm via
@@ -61,6 +63,7 @@ proxy.addRoute('http://server2.qzqzqz.com', 'localhost:8002')
 logger.info(null,'Proxy server started')
 
 ```
+| [StatisticsServerOptions](#statistics-server-options) |
 
 The SimpleHTTPServer is a small implementation of a web server; it responds with the server number, hostname and url.
 
@@ -97,7 +100,7 @@ You are now running a reverse proxy sharing a single front end ip address (port 
 
 Change the address to http://localhost:3001 to view the statistics.
 
-If you can add another route: `proxy.addRoute('server1.qzqzqz.com/statistics', 'localhost:3001') the statistics can be viewed via the address http://server1.qzqzqz.com/statistics.
+If you add another route: `proxy.addRoute('server1.qzqzqz.com/statistics', 'localhost:3001')` the statistics can be viewed via the address http://server1.qzqzqz.com/statistics.
 
 ## Running a simple secure HTTPS server
 
@@ -323,6 +326,7 @@ const server2 = new SimpleHttpServer(2, 8002)
 
 const statisticsServer = new StatisticsServer(statisticsServerOptions)
 
+// @ts-ignore
 if ( hostname === '<Your Host Name>'){
 
   logger.error({hostname:hostname}, `hostname in 'letsEncryptHostTestProxy.ts' must be set to your registered host name`)
@@ -344,11 +348,11 @@ logger.info({hostname: hostname}, 'Https Lets Encrypt Test Proxy started')
 
 Once the ground-work is laid, replace `<Your Host Name>` with your registered hostname. Compile and run the project.
 
-The proxy will start and request a certificate from Let's Encrypt for your hostname. This certificate will not be backed by a 'certificate authority'. However, Once you have verified the system is working you can change the routingOptions.https.letsEncrypt.production to 'true', delete the old certificates and run it again.
+The proxy will start and request a certificate from Let's Encrypt for your hostname. This certificate will not be backed by a `certificate authority`. However, Once you have verified the system is working you can change the routingOptions.https.letsEncrypt.production to 'true', delete the old certificates and run it again.
 
 In a manner similar to the prior examples, enter your host name into the browser and you should receive a response from Server1 or Server2. If you have not received a producton certificate you will get the same warning as the self signed certificates.
 
-Sometimes modern routers will not allow you to open a page with the web address of the router. This is an attempt to twart a hack called `DNS rebinding`. If the browser cannot open the page, try your phone with the wi-fi turned off. 
+Some modern routers will not allow you to open a page with the web address of the router. This is an attempt to twart a hack called `DNS rebinding`. If the browser cannot open the page, try your phone with the wi-fi turned off. 
 
 ---
 
@@ -371,7 +375,7 @@ addRoute() will add a non-duplicate route to the routing server. `from` refers t
   removeRoute (from: string | Partial<URL>,
     to?: string | ProxyUrl | (string | ProxyUrl)[]): HttpReverseProxy
 ```
-removeRoute() will remove one or more routes. If no targets are specified all of the targets will be removed. When the route has no more targets,it will be removed. RemoveRoute will silently ignore requests to remove a route that does not exist.
+removeRoute() will remove one or more routes. If no targets are specified, all of the targets will be removed. When the route has no more targets, it will be removed. RemoveRoute will silently ignore requests to remove a route that does not exist.
 
 Both addRoute and removeRoute can be chained in standard `.` notation:
 
@@ -433,7 +437,7 @@ The default web page is a minimal implementation requiring no outside libraries.
 
 The logging component will function in non-clustered and clustered environments without any options.
 
-The [options](#logging-server-options) for the Logger are only required if you wish to view the log remotely via a web page or custom application.
+The [options](#logging-server-options) for the Logger are only required if you wish to view the log remotely via a web page or custom application. Or if you what to change the default logging level.
 
 
 # Clustering
@@ -504,7 +508,7 @@ proxy.addRoute('http://server2.test.com', 'localhost:8002')
 logger.info(null, 'Proxy server started')
 ```
 
-This example will allow you to view the Statistics and logging from 
+This example will allow you to view the statistics and log from 
 a single web page similar to the examples above.
 
 # Configuration Options
@@ -520,7 +524,7 @@ interface HTTPReverseProxyOptions {
   clustered?: boolean | number
   letsEncryptOptions?: BaseLetsEncryptOptions
   preferForwardedHost?: boolean,
-  log?: SimpleLogger
+  log?: Logger
   stats?: Statistics
 }
 ```
@@ -556,9 +560,9 @@ Option | Type | Default | Description
 __port__ | number | `443` | The inbound port used to listen for https connections
 __certificates__ | object | [See Below](#certificates) | [Certificate](#certificates) object.
 __host__ | network-address | http [host](https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback) | The network interface to listen for https connections. This would only be used to force the system to listen on a single network. The format is a standard IPV4 or IPV6 network address. This has no relation to a host or hostname in a URL.
- __keyFilename__ | string | `null` | optional path and file name for the default certificate private key. The default certificate is used when a https route does not specify key and certificate files or is not configured to use LetsEncrypt. This should be a [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) encoded private key file.
- __certificateFilename__ | string | `null` | optional path and file name for the default certificate file. This should be a [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) encoded certificate file.
- __caFilename__ | string | `null` | optional path and file name for the default certificate authority file. This should be a [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) encoded certificate authority file.
+ __keyFilename__ | string | `null` | Optional path and file name for the default certificate private key. The default certificate is used when a https route does not specify key and certificate files or is not configured to use LetsEncrypt. This should be a [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) encoded private key file.
+ __certificateFilename__ | string | `null` | Optional path and file name for the default certificate file. This should be a [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) encoded certificate file.
+ __caFilename__ | string | `null` | Optional path and file name for the default certificate authority file. This should be a [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail) encoded certificate authority file.
  __httpsServerOptions__ | object | `null` | The set of options as specified by the node https create server found [here](https://nodejs.org/api/https.html#https_https_createserver_options_requestlistener).
 
 ---
@@ -572,18 +576,19 @@ interface BaseLetsEncryptOptions {
   certificates?: Certificates
   dnsChallenge?: AbstractDNSUpdate
   dnsNameServer?: string
-  log?: SimpleLogger
+  log?: Logger
   stats?: Statistics
 }
 ```
-[Certificates](#certificates) | [AbstractDNSUpdate](#dns-update) | [SimpleLogger](#simple-logger) | [Statistics](#statistics)
+[Certificates](#certificates) | [AbstractDNSUpdate](#dns-update) | [Logger](#simple-logger) | [Statistics](#statistics)
+
 Option | Type | Default | Description
 ---|---|---|---
 __host__ | string | all | The network interface to listen for http connections. Defaults to all [interfaces](https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback). This would only be used to force the system to listen on a single network. The format is a standard IPV4 or IPV6 network address. This has no relation to a host or hostname in a URL.
 __port__ | number | `3000` | The inbound port used to listen for http connections for the LetsEncrypt local server.
 __certificate__ | [Certificates](#certificates) | httpOptions.certificates | The certificate store for theLetsEncrypt managed certificates.
 __dnsChallenge__ | BaseDNSUpdate | null | For LetsEncrypt registrations that require the use of the dns-01 challenge (i.e. wildcard host names: *.qzqzqz.com) this is the implementation of the DNS challenge handler for the DNS service. If the challenge handler for the DNS service you use is not provided one must be written to access the DNS and add/remove the appropriate DNS TXT record.
-__dnsNameServer__ | string | null | After writing the entry to the DNS table, the DNS challenge may verify the entry has been propagated within the cluster of name servers on the service before askting LetsEncrypt to look for it.
+__dnsNameServer__ | string | null | After writing the entry to the DNS table, the DNS challenge may verify the entry has been propagated within the cluster of name servers on the service before asking LetsEncrypt to look for it.
 __log__ | object | null | The logging element
 __stats__ | object | null | the Statistics element
 
@@ -597,13 +602,13 @@ To facilitate the implementation of other interfaces the DNS update is supported
 export interface BaseDNSUpdateOptions{
   
   stats?: Statistics
-  log?:SimpleLogger
+  log?:Logger
 }
 ```
 Option | Type | Default | Description
 ---|---|---|---
 stats | [Statistics](#statistics) | null | A reference to the Statistics object.
-log | [SimpleLogger](#simple-logger) | null | A reference to a logging object.
+log | [Logger](#simple-logger) | null | A reference to a logging object.
 
 The DNS class exposes two abstract methods for managing the update:
 
@@ -613,10 +618,15 @@ The DNS class exposes two abstract methods for managing the update:
 ```
 
 addAcmeChallengeToDNS should add a DNS TXT record for the domain. 
+
+removeAcmeChallengeFromDNS should remove the TXT record.
+
+The package contains a implementation of the DNS challenge for the GoDaddy DNS service. You can use this as a template for implementing the DNS challenge on other services.
+
 ---
 ## DNS Update Using GoDaddy
 
-The GoDaddy DNS update requires an APIKey and secret. These can be generated viw the developer interface on GoDaddy
+The GoDaddy DNS update requires an APIKey and secret. These can be generated via the developer interface on GoDaddy
 
 ```ts
 export interface GoDaddyDNSUpdateOptions extends BaseDNSUpdateOptions {
@@ -634,7 +644,6 @@ ___
 ## Route Registration Options
 
 ```ts
-
 export interface RouteRegistrationOptions {
   https?: RegistrationHttpsOptions,
   secureOutbound?: boolean
@@ -647,8 +656,8 @@ Option | Type | Default | Description
 ---|---|---|---
 https | [object](#route-registration-https-options) | null | The specification of the front side (inbound) https connection. 
 secureOutbound | boolean | false | Specifies the outbound connection should be secure (https) and the credentials should be checked.
-useTargetHostHeader | boolean | false | If true and the inbound http packet has an x-forwarded-host header the first element of the x-forwarded-host header is used as the host name. Otherwise the host header is used. This should be set to true if your proxy sits behind another proxy.
-stats | [Statistics] | null | If not null (or undefined) the Statistics object will be used to keep track of the route statistics.
+useTargetHostHeader | boolean | false | If true and the inbound http packet has an `x-forwarded-host` header the first element of the x-forwarded-host header is used as the host name. Otherwise the host header is used. This should be set to true if your proxy sits behind another proxy.
+stats | [object](#statistics) | null | If not null (or undefined) the Statistics object will be used to keep track of the route statistics.
 
 ---
 
@@ -687,16 +696,18 @@ export interface RegistrationLetsEncryptOptions {
 Option | Type | Default | Description
 ---|---|---|---
 __email__ | string | none | This is the email address that will be used to set up an account on the LetsEncrypt service. It must be a vaild email address.
-__production__ | boolean | false | The LetsEncrypt service provides a testing environment which allows you to verify you have everything configured correctly before you request a real certificate. The certificates generated in the testing environment will have the same issues in the browser as the self signed certificates.
+__production__ | boolean | false | The LetsEncrypt service provides a testing/staging environment which allows you to verify you have everything configured correctly before you request a real certificate. The certificates generated in the staging environment will have the same issues in the browser as the self signed certificates.
 __renewWithin__ | number | 30 | The LetsEncrypt certificates are valid for 90 days. They need to be renewed periodically. This value is the number of days prior to expiration a new certificate should be requested.
 __forceRenew__ | boolean | false | If true a new certificate will always be requested at startup.
+
+The proxy maintains timers to re-generate the request for a new certificate before they expire. If the request fails, it will wait a day and try again.
 
 ---
 
 ## Certificates
 ```ts
 certificateStoreRoot: string
-log?: SimpleLogger
+log?: Logger
 stats?: Statistics
 ```
 Option | Type | Default | Description
@@ -731,8 +742,8 @@ Option | Type | Default | Description
 __stats__ | [object](#statistics) | none | The instance of the Statistics class maintaining the counts.
 __noStart__ | boolean | false | When set to true the server must be started manually later in the startup process.
 __htmlFilename__ | string | ./public/statisticsPage.html | The page served from the Statistics server.
-__http__ | [object](#statistics-server-http-options) | port: 3001 | The configuration options for the http side of the statistics server.
-__websocket__ | [object](#statistics-server-websocket-options) | interval: 5000 | The configuration options for the websocket side of the statistics server.
+__http__ | [object](#statistics-server-http-options) | {port: 3001} | The configuration options for the http side of the statistics server.
+__websocket__ | [object](#statistics-server-websocket-options) | {interval: 5000} | The configuration options for the websocket side of the statistics server.
 
 ---
 
@@ -786,6 +797,14 @@ __logLevel__ | number | 40 | The severity of the type of log message. 10 - debug
 When no options are passed the following default options are used:
 
 ## Default http options
+
+```ts
+port: 80,
+proxyOptions: defaultProxyOptions,
+httpsOptions: null,
+preferForwardedHost: false,
+```
+
 ## Default proxy options
 ```ts
 ntlm: false,
@@ -807,6 +826,12 @@ port: 3000
 ```
 
 ## Default statistics server options
+
+```ts
+port = 3001
+htmlFilename = './public/statisticsAndLoggingPage.html'
+updateInterval = 5000
+```
 
 # How it works
  
@@ -870,3 +895,27 @@ The resulting requests would have the root ('/api') prepended to the url receive
 myserver.mydomain.com/getusers => localhost:9001/api/getusers
 ```
 
+Urls can be on both sides of the route specification:
+
+```
+proxyServer.addRoute('myserver.mydomain.com/api', 'localhost:9001/apihandler')
+```
+```
+myserver.mydomain.com/api/getusers => localhost:9001/apihandler/getusers
+```
+
+# Acknowledgements
+
+The [node](https://nodejs.org) team continues to do exceptional work.
+
+The core of the proxy system is provided by [http-proxy](https://github.com/http-party/node-http-proxy). It is a solid package.
+
+The [acme-client](https://github.com/publishlab/node-acme-client) provides the Lets Encrypt interface. Again, this is a solid piece of work.
+
+The certificate and encryption tools are provided by [forge](https://github.com/digitalbazaar/forge). These people are deep in the weeds.
+
+I got the idea for this from [redbird](https://github.com/OptimalBits/redbird). This is a great http reverse proxy implementation. I just wanted one coded in TypeScript.
+ 
+Then there is [TypeScript](https://www.typescriptlang.org/). If you don't use it, you should try. It attempts to bring the past 50 years of programming language development to the JavaScript world.
+
+I work exclusively in [vsCode](https://code.visualstudio.com/). Pretty close to perfect.
