@@ -10,7 +10,8 @@
     "build": "tsc",
     "start": "npm run build && node ./dist/src/examples/simpleHttpProxy.js",
     "httpsExample": "npm run build && node ./dist/src/examples/simpleHttpsProxy.js",
-    "letsEncryptExample": "npm run build && node ./dist/src/examples/letsEncryptHostTestProxy.js"
+    "letsEncryptExample": "npm run build && node ./dist/src/examples/letsEncryptProxy.js",
+    "clusteredExample": "npm run build && node ./dist/src/examples/clusteredProxy.js"
   },
   "repository": {
     "type": "git",
@@ -25,7 +26,7 @@
   ],
   "author": "True Lab Creations/Tom Swiedler",
   "dependencies": {
-    "acme-client": "^3.2.0",
+    "acme-client": "^3.2.1",
     "colors": "^1.4.0",
     "http-proxy": "^1.18.0",
     "node-forge": "^0.9.1",
@@ -33,13 +34,13 @@
   },
   "devDependencies": {
     "@types/acme-client": "^3.0.0",
-    "@types/http-proxy": "^1.17.0",
-    "@types/node": "^12.7.12",
-    "@types/node-forge": "^0.8.6",
+    "@types/http-proxy": "^1.17.2",
+    "@types/node": "^12.12.9",
+    "@types/node-forge": "^0.8.7",
     "@types/ws": "^6.0.3",
     "gulpclass": "^0.2.0",
-    "prettier": "^1.18.2",
-    "ts-node": "^8.4.1",
+    "prettier": "^1.19.1",
+    "ts-node": "^8.5.2",
     "tslint": "^5.20.1",
     "tslint-config-prettier": "^1.18.0",
     "tslint-plugin-prettier": "^2.0.1",

@@ -8,7 +8,12 @@ import { Logger } from '../lib/logger'
 
 const hostname = '<Your Host Name>' // replace this with your actual host name
 const stats = new Statistics()
-const logger = new Logger()
+const logger = new Logger(
+  {
+    port: 3002,
+    logLevel: 10
+  }
+)
 
 const statisticsServerOptions: StatisticsServerOptions = {
 
@@ -61,7 +66,11 @@ logger.warn(null,
   `LetsEncryptProxy:
     Make sure you have a valid, DNS registered host name.
     Before this example is run replace '<Your Host Name>' with
-    the actual registered host name
+    the actual registered host name.
+
+    If you are testing on a local network your router may not allow
+    you to access a website that refers to the internet address of your router. 
+    If you cannot retrieve the page try using your phone with the wi-fi turned off.
 
     When routingOptions.https.letsEncrypt.production is 'false'
     certificates for this example are do not have a valid certificate authority.
@@ -81,10 +90,11 @@ logger.warn(null,
 
     If you get a 404 Not Found for the statistics page, 
     exit the server and run it from the root of the project.
-    Or run 'npm start' from the root of the project
+    Or run 'npm run letsEncryptExample' from the root of the project
   `
 )
 
+// @ts-ignore
 if ( hostname === '<Your Host Name>'){
 
   logger.error({hostname:hostname}, `hostname in 'src/examples/letsEncryptProxy.ts' must be set to your registered host name`)

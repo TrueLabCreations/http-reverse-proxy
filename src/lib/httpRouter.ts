@@ -235,7 +235,7 @@ export class HttpRouter {
    * Remove a route from the list of targets
    */
 
-  public removeRoute = (from: Partial<URL>, to?: string | ProxyUrl | (string | ProxyUrl)[]) => {
+  public removeRoute = (from: Partial<ProxyUrl>, to?: string | ProxyUrl | (string | ProxyUrl)[]) => {
 
     if (!(from = makeUrl(from))) {
       /**

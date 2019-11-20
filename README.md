@@ -23,7 +23,7 @@ A good tutorial for editing the hosts file on most common system types can be fo
 
 The simplest example of using this package is demonstrated by setting up some routes using http. 
 
-If you are using Typescript the index.ts would contain:
+The index.ts would contain:
 
 > TypeScript
 ```ts
@@ -33,7 +33,7 @@ import {
   Statistics, 
   StatisticsServer, 
   StatisticsServerOptions,
-  SimpleLogger 
+  Logger 
   } from 'http-reverse-proxy-ts'
 
 const stats = new Statistics()
@@ -41,11 +41,11 @@ const stats = new Statistics()
 const statisticsServerOptions: StatisticsServerOptions = {
 
   stats: stats,
-  htmlFilename: './public/statisticsPage.html'
+  htmlFilename: './public/statisticsAndLoggingPage.html'
 }
 
 const statisticsServer = new StatisticsServer(statisticsServerOptions)
-const logger = new SimpleLogger()
+const logger = new Logger()
 
 const server1 = new SimpleHttpServer(1, 8001)
 const server2 = new SimpleHttpServer(2, 8002)
@@ -60,56 +60,31 @@ proxy.addRoute('http://server2.qzqzqz.com', 'localhost:8002')
 
 logger.info(null,'Proxy server started')
 
-```
-
-If you are using Javascript the index.js would contain:
-
-> Javascript
-```js
-const  {
-  HttpReverseProxy,
-  SimpleHttpServer,
-  Statistics,
-  StatisticsServer,
-  SimpleLogger
- } = require ('http-reverse-proxy-ts')
-
-const stats = new Statistics()
-
-const statisticsServerOptions = {
-
-  stats: stats,
-  htmlFilename: './public/statisticsPage.html'
-}
-
-const statisticsServer = new StatisticsServer(statisticsServerOptions)
-const logger = new SimpleLogger()
-
-const server1 = new SimpleHttpServer(1, 8001)
-const server2 = new SimpleHttpServer(2, 8002)
-
-server1.start()
-server2.start()
-
-const proxy = new HttpReverseProxy({ stats: stats, log: logger })
-
-proxy.addRoute('http://server1.qzqzqz.com', 'localhost:8001')
-proxy.addRoute('http://server2.qzqzqz.com', 'localhost:8002')
-
-logger.info(null,'Proxy server started')
 ```
 
 The SimpleHTTPServer is a small implementation of a web server; it responds with the server number, hostname and url.
 
-If you are using Typescript you will need to compile the project. It is recommended for this example that you set the `outDir` in the `tsconfig.json` file to `.`.
+You will need to compile the project. It is recommended for this example that you set the `outDir` in the `tsconfig.json` file to `.`.
 
-Run the project from a command prompt in the directory containing the `index.js` file:
+Run the project:
 
 ```
 node index.js
 ```
 
-If you want to view the statistics from the [server](#statistics) you will need to copy the the file 'statisticsPage.html' from the `public` folder of the package (in node_modules) to a `public` folder at the root of your project. The statistics server defaults to localhost:3001.
+If you want to view the statistics from the [server](#statistics) you will need to copy the the file 'statisticsAndLoggingPage.html' from the `public` folder of the package (in node_modules) to a `public` folder at the root of your project. The statistics server defaults to localhost:3001.
+
+If you want to view the log from the browser change the line:
+
+```ts
+const logger = new Logger()
+```
+to
+
+```ts
+const logger = new Logger({port: 3002, logLevel: 10})
+```
+This is cause the logger to create an http server at port 3002 which will forward log message to the statistics web page.
 
 In the browser address bar on the same machine type:
 http://server1.qzqzqz.com
@@ -154,16 +129,16 @@ import {
   Statistics,
   StatisticsServerOptions,
   StatisticsServer,
-  SimpleLogger
+  Logger
 } from 'http-reverse-proxy-ts'
 
 const stats = new Statistics()
-const logger = new SimpleLogger()
+const logger = new Logger()
 
 const statisticsServerOptions: StatisticsServerOptions = {
 
   stats: stats,
-  htmlFilename: './public/statisticsPage.html'
+  htmlFilename: './public/statisticsAndLoggingPage.html'
 }
 
 const letsEncryptServerOptions: LetsEncryptSelfSignedOptions = {
@@ -224,93 +199,16 @@ logger.info(null, 'Https Reverse Proxy server started')
 ```
 [HttpReverseProxyOptions](#http-server-options) | [LetsEncryptSelfSignedOptions](#lets-encrypt-options) | [RouteRegistrationOptions](#route-registration-options) | [StatisticsServerOptions](#statistics-server-options)
 
-> Javascript
-
-```js
-const  {
-  HttpReverseProxy,
-  LetsEncryptUsingSelfSigned,
-  SimpleHttpServer,
-  Statistics,
-  StatisticsServer,
-  SimpleLogger
- } = require ('http-reverse-proxy-ts')
-
-const stats = new Statistics()
-const logger = new SimpleLogger()
-
-const statisticsServerOptions = {
-
-  stats: stats,
-  htmlFilename: './public/statisticsPage.html'
-}
-
-const letsEncryptServerOptions = {
-
-  organizationName: 'Self testing',
-  country: 'US',
-  state: 'AnyState',
-  locality: 'AnyTown'
-}
-
-const httpReverseProxyOptions = {
-
-  letsEncryptOptions: letsEncryptServerOptions,
-
-  httpsOptions: {
-
-    port: 443,
-
-    certificates: {
-
-      certificateStoreRoot: './certificates'
-    },
-  },
-
-  stats: stats,
-  log: logger,
-}
-
-const routingOptions = {
-
-  https: {
-
-    redirectToHttps: true,
-
-    letsEncrypt: {
-
-      email: 'myname@mydomain.com',
-      production: false,
-    }
-  }
-}
-
-const server1 = new SimpleHttpServer(1, 8001)
-const server2 = new SimpleHttpServer(2, 8002)
-
-const statisticsServer = new StatisticsServer(statisticsServerOptions)
-
-server1.start()
-server2.start()
-
-const proxy = new HttpReverseProxy(httpReverseProxyOptions, LetsEncryptUsingSelfSigned)
-
-proxy.addRoute('https://server1.qzqzqz.com', 'localhost:8001', routingOptions)
-proxy.addRoute('https://server2.qzqzqz.com', 'localhost:8002', routingOptions)
-
-logger.info(null, 'Https Reverse Proxy server started')
-```
 As in the http example we set up two local http servers. These servers do not use https.
 
 The reverse proxy is configured to accept http and https connections. If certificates are required (which will be 
 true the first time the example is run) they will be provided by the Let's Encrypt self signed service which will
 run locally.  
 
+These certificates will will give you a warning in the browser. 
+
 The routes are configured to force an http connection from the browser to be redirected to an https
 connection on the proxy.
-
-At startup the proxy will request the generation of the certificates for server1.qzqzqz.com and server2.qzqzqz.com. 
-These certificates will will give you a warning in the browser. 
 
 The certificates will be stored
 in the file system at the location specified by the `certificateStoreRoot`. The directory structure for the
@@ -330,13 +228,13 @@ certificate store will be:
     |- server2_qzqzqz_com-key.pem
 ```
 
-Compile and run the Typescript project or just run the Javascript version.
+Compile and run the project.
 
 In the browser address bar on the same machine type:
 http://server1.qzqzqz.com
 
 The browser should be redirected to an https connection. This connection should display an error in the browser 
-stating that the connection is not secure.Select the option to open the page anyway (this varies by prowser).
+stating that the connection is not secure. Select the option to open the page anyway (this varies by prowser).
 
 This should bring up the hello message from server1.
 
@@ -353,7 +251,7 @@ servers that are outside of your control the connection on the back side should 
 
 ## Running a Let's Encrypt secure proxy
 
-To test the retrieval of certificates from Let's Encrypt, you need a hostname pointed to your ip-address (the network side of the router). You also need to instruct your router to forward packets arriving on port 80 and port 443 to your local system. A starting point can be found [here](https://www.howtogeek.com/66214/how-to-forward-ports-on-your-router/)
+To test the retrieval of certificates from Let's Encrypt, you need a hostname directed to your ip-address (the network side of the router). You also need to instruct your router to forward packets arriving on port 80 and port 443 to your local system. A starting point can be found [here](https://www.howtogeek.com/66214/how-to-forward-ports-on-your-router/)
 
 You can obtain a temporary host name from  sites like [no-ip](https://www.noip.com/remote-access) or [DysDNS](https://dyn.com/remote-access/). I am sure there a many others.
 
@@ -371,17 +269,17 @@ import {
   Statistics,
   StatisticsServerOptions,
   StatisticsServer,
-  SimpleLogger
+  Logger
 } from 'http-reverse-proxy-ts'
 
 const hostname = '<Your Host Name>' // replace this with your actual host name
 const stats = new Statistics()
-const logger = new SimpleLogger()
+const logger = new Logger()
 
 const statisticsServerOptions: StatisticsServerOptions = {
 
   stats: stats,
-  htmlFilename: './public/statisticsPage.html'
+  htmlFilename: './public/statisticsAndLoggingPage.html'
 }
 
 const letsEncryptServerOptions: LetsEncryptClientOptions = {
@@ -444,87 +342,9 @@ logger.info({hostname: hostname}, 'Https Lets Encrypt Test Proxy started')
 ```
 [HttpReverseProxyOptions](#http-server-options) | [LetsEncryptClientOptions](#lets-encrypt-options) | [RouteRegistrationOptions](#route-registration-options) | [StatisticsServerOptions](#statistics-server-options)
 
-> Javascript
-
-```js
-const {
-  HttpReverseProxy,
-  LetsEncryptUsingAcmeClient,
-  SimpleHttpServer,
-  Statistics,
-  StatisticsServer,
-  SimpleLogger
-} = require("http-reverse-proxy-ts");
-
-const hostname = "<Your Host Name>"; // replace this with your actual host name
-const stats = new Statistics();
-const logger = new SimpleLogger();
-
-const statisticsServerOptions = {
-  stats: stats,
-  htmlFilename: "./public/statisticsPage.html"
-};
-
-const letsEncryptServerOptions = {
-  noVerify: true
-};
-
-const httpReverseProxyOptions = {
-  letsEncryptOptions: letsEncryptServerOptions,
-
-  httpsOptions: {
-    port: 443,
-
-    certificates: {
-      certificateStoreRoot: "./certificates"
-    }
-  },
-
-  stats: stats,
-  log: logger
-};
-
-const routingOptions = {
-  https: {
-    redirectToHttps: true,
-
-    letsEncrypt: {
-      email: "myname@mydomain.com", // This needs a real email address
-      production: false // change this to true once testing is complete
-    }
-  }
-};
-
-const server1 = new SimpleHttpServer(1, 8001);
-const server2 = new SimpleHttpServer(2, 8002);
-
-const statisticsServer = new StatisticsServer(statisticsServerOptions);
-
-if (hostname === "<Your Host Name>") {
-  logger.error(
-    { hostname: hostname },
-    `hostname in 'letsEncryptHostTestProxy.js' must be set to your registered host name`
-  );
-
-  process.exit(0);
-}
-
-server1.start();
-server2.start();
-
-const proxy = new HttpReverseProxy(
-  httpReverseProxyOptions,
-  LetsEncryptUsingAcmeClient
-);
-
-proxy.addRoute(hostname, "localhost:8001", routingOptions);
-proxy.addRoute(hostname, "localhost:8002", routingOptions); // round robin between servers
-
-logger.info({ hostname: hostname }, "Https Lets Encrypt Test Proxy started");
-```
 Once the ground-work is laid, replace `<Your Host Name>` with your registered hostname. Compile and run the project.
 
-The proxy will start and request a certificate for your hostname. This certificate will not be backed by a 'certificate authority'. However, Once you have verified the system is working you can change the routingOptions.https.letsEncrypt.production to 'true', delete the old certificates and run it again.
+The proxy will start and request a certificate from Let's Encrypt for your hostname. This certificate will not be backed by a 'certificate authority'. However, Once you have verified the system is working you can change the routingOptions.https.letsEncrypt.production to 'true', delete the old certificates and run it again.
 
 In a manner similar to the prior examples, enter your host name into the browser and you should receive a response from Server1 or Server2. If you have not received a producton certificate you will get the same warning as the self signed certificates.
 
@@ -605,9 +425,16 @@ The server will provide the current state of the statistics table through a webS
 
 Each key (property) of the object is a measurement point and the value of the property is the current count. The key consists of the workerId (number) followed by a `:` followed by the name. The name portion may also contain additional `:` characters so splitting out the workderId should be done carefully.
 
-The default web page served by the statistics server is read from `./public/statisticsPage.html`. This default page can be overridden by setting the `htmlFilename` in the [StatisticsServerOptions](#statistics-server-options).
+The default web page served by the statistics server is read from `./public/statisticsAndLoggingPage.html`. This default page can be overridden by setting the `htmlFilename` in the [StatisticsServerOptions](#statistics-server-options).
 
 The default web page is a minimal implementation requiring no outside libraries. It will display the table with a single row for each statistic name and a column for each workerId. WorkerId 0 is the master. In a non-clustered configuration all statistics will be associated with the master.
+
+# Logging
+
+The logging component will function in non-clustered and clustered environments without any options.
+
+The [options](#logging-server-options) for the Logger are only required if you wish to view the log remotely via a web page or custom application.
+
 
 # Clustering
 
@@ -620,6 +447,65 @@ Clustering is enabled by setting the `clustered` option of the [httpServerOption
 If the value is set to `true` the master process will start worker processes based on the number of cores in the cpu. You can override this by setting `clustered` to a number. The minimum is 2 the maximum is 32.
 
 Clustering should be employed only after the non-clustered router is tested and running properly.
+
+An example clustered server:
+
+```ts
+import cluster from 'cluster'
+import { 
+ HttpReverseProxy,
+ SimpleHttpServer,
+ Statistics,
+ StatisticsServer,
+ StatisticsServerOptions,
+ Logger } from 'http-reverse-proxy-ts'
+
+const stats = new Statistics()
+let logger: Logger
+
+/**
+ * In a clustered environment you only want the support services 
+ * running on the master
+ */
+
+if (cluster.isMaster) {
+
+  const statisticsServerOptions: StatisticsServerOptions = {
+
+    stats: stats,
+    htmlFilename: './public/statisticsAndLoggingPage.html'
+  }
+
+  const server1 = new SimpleHttpServer(1, 8001)
+  const server2 = new SimpleHttpServer(2, 8002)
+
+  const statisticsServer = new StatisticsServer(statisticsServerOptions)
+
+  logger = new Logger(
+    {
+      port: 3002,
+      logLevel: 10
+    }
+  )
+
+  server1.start()
+  server2.start()
+}
+else {
+
+  logger = new Logger()
+}
+
+const proxy = new HttpReverseProxy({ clustered: true, stats: stats, log: logger })
+
+proxy.addRoute('http://server1.test.com', 'localhost:8001')
+proxy.addRoute('http://server2.test.com', 'localhost:8002')
+
+logger.info(null, 'Proxy server started')
+```
+
+This example will allow you to view the Statistics and logging from 
+a single web page similar to the examples above.
 
 # Configuration Options
 
@@ -844,7 +730,7 @@ Option | Type | Default | Description
 ---|---|---|---
 __stats__ | [object](#statistics) | none | The instance of the Statistics class maintaining the counts.
 __noStart__ | boolean | false | When set to true the server must be started manually later in the startup process.
-__htmlFilename__ | ./public/statisticsPage.html | The page served from the Statistics server.
+__htmlFilename__ | string | ./public/statisticsPage.html | The page served from the Statistics server.
 __http__ | [object](#statistics-server-http-options) | port: 3001 | The configuration options for the http side of the statistics server.
 __websocket__ | [object](#statistics-server-websocket-options) | interval: 5000 | The configuration options for the websocket side of the statistics server.
 
@@ -877,6 +763,23 @@ Option | Type | Default | Description
 updateInterval | number | 5000 | The interval between updates being pushed from the statistics server to the web client, in milliseconds
 filter | string[] | none | A set of filters to limit the number of properties sent. Each filter is compared to the start of the name portion of the property. An exact match allows the property to be sent.
 ---
+
+## Logging server options
+
+```ts
+export interface LoggingServerOptions {
+  host?: string
+  port?: number
+  htmlFilename?: string
+  logLevel?: number
+}
+```
+Option | Type | Default | Description
+---|---|---|---
+__host__ | network-interface | [all](https://nodejs.org/api/net.html#net_server_listen_port_host_backlog_callback) | The network interface. 
+__port__ | number | 3002 | The inbound port used to listen for http connections.
+__htmlFilename__ | string | none | The page served from the Logging server.
+__logLevel__ | number | 40 | The severity of the type of log message. 10 - debugging and above, 20 - tracing and above, 30 - info and above, 40 warnings and above, 50 - errors and above, 60 - Fatal errors only
 
 # Defaults
 

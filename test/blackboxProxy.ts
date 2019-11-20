@@ -48,18 +48,22 @@ const httpProxyOptions: HttpReverseProxyOptions = {
 
   httpsOptions: {
 
-    certificates: new Certificates({ certificateStoreRoot: '../certificates' }),
+    certificates: new Certificates({ certificateStoreRoot: './certificates' }),
   },
 
   letsEncryptOptions: letsEncryptSelfSignedOptions,
 
-  log: new Logger(),
+  log: new Logger({
+
+    port: 3002,
+    logLevel: 40
+  }),
 
   stats: statistics
 }
 
 const registrationLetsEncryptOptions: RegistrationLetsEncryptOptions ={
-  email: "tom@swiedler.com",
+  email: "myname@mydomain.com",
   production: false,
   forceRenew: true
 
@@ -85,23 +89,24 @@ export const startProxy = () => {
   statisticsServer = new StatisticsServer(statisticsOptions)
   proxy = new HttpReverseProxy(httpProxyOptions, LetsEncryptUsingSelfSigned)
 
-  proxy.addRoute('server9.test.com', 'localhost:3001')
-  proxy.addRoute('server1.test.com', 'localhost:9001')
-  proxy.addRoute('server2.test.com', 'localhost:9002')
-  proxy.addRoute('server3.test.com', 'localhost:9003')
-  proxy.addRoute('server1.test.com/testing', 'localhost:9001')
-  proxy.addRoute('server2.test.com/testing', 'localhost:9002')
-  proxy.addRoute('server3.test.com/testing', 'localhost:9003')
-  proxy.addRoute('server1.test.com/test', '127.0.0.1:9001/test')
-  proxy.addRoute('server2.test.com/test', '127.0.0.1:9002/test')
-  proxy.addRoute('server3.test.com/test', '127.0.0.1:9003/test')
-  proxy.addRoute('server4.test.com', 'server3.test.com', { useTargetHostHeader: true })
-  proxy.addRoute('server5.test.com', 'server4.test.com', { useTargetHostHeader: true })
-  proxy.addRoute('server6.test.com', 'server5.test.com', { useTargetHostHeader: true })
-  proxy.addRoute('server7.test.com', 'server6.test.com', httpsRouteRegistrationOptions)
+  proxy.addRoute('server9.qzqzqz.com', 'localhost:3001')
+  proxy.addRoute('server1.qzqzqz.com', 'localhost:9001')
+  proxy.addRoute('server2.qzqzqz.com', 'localhost:9002')
+  proxy.addRoute('server3.qzqzqz.com', 'localhost:9003')
+  proxy.addRoute('server1.qzqzqz.com/testing', 'localhost:9001')
+  proxy.addRoute('server2.qzqzqz.com/testing', 'localhost:9002')
+  proxy.addRoute('server3.qzqzqz.com/testing', 'localhost:9003')
+  proxy.addRoute('server1.qzqzqz.com/test', '127.0.0.1:9001/test')
+  proxy.addRoute('server2.qzqzqz.com/test', '127.0.0.1:9002/test')
+  proxy.addRoute('server3.qzqzqz.com/test', '127.0.0.1:9003/test')
+  proxy.addRoute('server4.qzqzqz.com', 'server3.qzqzqz.com', { useTargetHostHeader: true })
+  proxy.addRoute('server5.qzqzqz.com', 'server4.qzqzqz.com', { useTargetHostHeader: true })
+  proxy.addRoute('server6.qzqzqz.com', 'server5.qzqzqz.com', { useTargetHostHeader: true })
+  proxy.addRoute('server7.qzqzqz.com', 'server6.qzqzqz.com', httpsRouteRegistrationOptions)
 }
 
 export const stopProxy = () => {
   proxy && proxy.close()
   statisticsServer && statisticsServer.stop()
+  httpProxyOptions.log && httpProxyOptions.log.close()
 }

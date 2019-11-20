@@ -1,7 +1,7 @@
 import http from 'http'
 import URL, { parse as urlParse } from 'url'
 
-export interface ProxyUrl extends URL.Url {
+export interface ProxyUrl extends Partial<URL.Url> {
   useTargetHostHeader?: boolean
   secure?: boolean
 }

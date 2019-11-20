@@ -417,7 +417,7 @@ export class HttpReverseProxy {
    */
 
   public addRoute = (
-    from: string | Partial<URL>,
+    from: string | Partial<ProxyUrl>,
     to: string | ProxyUrl | (string | ProxyUrl)[],
     registrationOptions?: RouteRegistrationOptions
   ): HttpReverseProxy => {
