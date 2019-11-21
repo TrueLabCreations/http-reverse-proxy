@@ -264,13 +264,32 @@
 
       function startLoggingWebsocket() {
         /**
-         * Computing the port is a hack for now
+         * Computing the port/pathname is a hack for now
          * (or maybe forever)
          */
-        loggingWS = new WebSocket(
-          `ws://${window.location.hostname}:${parseInt(window.location.port) +
-            1}${window.location.pathname}`
-        );
+        const port = window.location.port;
+        const pathname = window.location.pathname;
+
+        if (port && port !== 80) {
+          
+          loggingWS = new WebSocket(
+            `ws://${window.location.hostname}:${port + 1}${pathname}`
+          );
+        }
+        else if (pathname && pathname === '/statistics'){
+
+          loggingWS = new WebSocket(
+            `ws://${window.location.hostname}:${port}/logging`
+          );
+        }
+        else{
+
+          /**
+           * No idea what to do here, so just silently fail...
+           */
+
+           return
+        }
 
         loggingWS.onopen = event => {
           document.getElementById("startLoggingButton").disabled = true;
