@@ -719,7 +719,7 @@ export class HttpReverseProxy {
 
     /**
      * Set up the SNI callback to handle multiple hostnames 
-     * If there are no credentials for a host, pass the default credentials 
+     * If there are no credentials for a host, the server will use the default credentials 
      * set at startup in the https options
      */
 

@@ -37,6 +37,11 @@
   ],
   "author": "True Lab Creations",
   "dependencies": {
+    "@types/acme-client": "^3.0.0",
+    "@types/http-proxy": "^1.17.2",
+    "@types/node": "^12.12.9",
+    "@types/node-forge": "^0.8.7",
+    "@types/ws": "^6.0.3",
     "acme-client": "^3.2.1",
     "colors": "^1.4.0",
     "http-proxy": "^1.18.0",
@@ -44,13 +49,15 @@
     "ws": "^7.2.0"
   },
   "devDependencies": {
-    "@types/acme-client": "^3.0.0",
-    "@types/http-proxy": "^1.17.2",
-    "@types/node": "^12.12.9",
-    "@types/node-forge": "^0.8.7",
-    "@types/ws": "^6.0.3",
     "rimraf": "^3.0.0",
     "tslint": "^5.20.1",
     "typescript": "^3.7.2"
-  }
+  },
+  "bundledDependencies": [
+    "@types/acme-client",
+    "@types/http-proxy",
+    "@types/node",
+    "@types/node-forge",
+    "@types/ws"
+  ]
 }
