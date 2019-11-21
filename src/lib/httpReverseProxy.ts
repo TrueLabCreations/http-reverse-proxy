@@ -654,7 +654,13 @@ export class HttpReverseProxy {
          * Get the host name from the request and use it to find the proper router
          */
 
-        const hostname = this.getInboundHostname(req);
+        let hostname = this.getInboundHostname(req);
+
+        if (hostname){
+
+          hostname = hostname.toLowerCase()
+        }
+
         const router = this.routers[hostname]
 
         if (router) {
@@ -788,8 +794,14 @@ export class HttpReverseProxy {
          * Get the host name from the request and use it to find the proper router
          */
 
-        const hostName = this.getInboundHostname(req);
-        const router = this.routers[hostName]
+        let hostname = this.getInboundHostname(req)
+
+        if (hostname){
+
+          hostname = hostname.toLowerCase()
+        }
+
+        const router = this.routers[hostname]
 
         /**
          * Pass off the heavy lifting to the router
