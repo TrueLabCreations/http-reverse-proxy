@@ -1,6 +1,6 @@
 {
   "name": "http-reverse-proxy-ts",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "license": "MIT",
   "description": "An Http reverse proxy implementation in Typescript",
   "engines": {
@@ -13,7 +13,7 @@
     "clean": "rimraf dist",
     "build": "npm run clean && tsc -p .",
     "start": "npm run build && node ./dist/src/examples/simpleHttpProxy.js",
-    "test": "node ./dist/test/blackboxTests.js all 100 10",
+    "test": "npm run build && node ./dist/test/blackboxTests.js all 100 10",
     "httpsExample": "npm run build && node ./dist/src/examples/simpleHttpsProxy.js",
     "letsEncryptExample": "npm run build && node ./dist/src/examples/letsEncryptProxy.js",
     "clusteredExample": "npm run build && node ./dist/src/examples/clusteredProxy.js"
