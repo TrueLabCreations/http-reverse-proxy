@@ -45,7 +45,7 @@
     "acme-client": "^3.2.1",
     "colors": "^1.4.0",
     "http-proxy": "^1.18.0",
-    "node-forge": "^0.10.0",
+    "node-forge": "^1.3.0",
     "ws": "^7.2.0"
   },
   "devDependencies": {
